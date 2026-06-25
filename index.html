@@ -47,28 +47,40 @@
         </div>
         <button class="btn btn-primary" onclick="nav('nova')">＋ Nova Fatura</button>
       </div>
-      <div class="metrics">
-        <div class="metric">
-          <div class="metric-label">A Receber</div>
-          <div class="metric-value c-blue" id="m-receber">0,00 €</div>
-          <div class="metric-count" id="m-receber-n">—</div>
+
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">💸 Fornecedores</div>
+      <div class="metrics" style="margin-bottom:20px">
+        <div class="metric"><div class="metric-label">Total Faturado</div><div class="metric-value c-blue" id="m-forn-total">0,00 €</div><div class="metric-count" id="m-forn-total-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Pago</div><div class="metric-value c-green" id="m-forn-pago">0,00 €</div><div class="metric-count" id="m-forn-pago-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Pendente</div><div class="metric-value c-amber" id="m-forn-pend">0,00 €</div><div class="metric-count" id="m-forn-pend-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Vencidas</div><div class="metric-value c-red" id="m-forn-venc">0,00 €</div><div class="metric-count" id="m-forn-venc-n">0 faturas</div></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">💰 Clientes</div>
+      <div class="metrics" style="margin-bottom:24px">
+        <div class="metric"><div class="metric-label">Total Emitido</div><div class="metric-value c-blue" id="m-cli-total">0,00 €</div><div class="metric-count" id="m-cli-total-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Recebido</div><div class="metric-value c-green" id="m-cli-rec">0,00 €</div><div class="metric-count" id="m-cli-rec-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Por Receber</div><div class="metric-value c-amber" id="m-cli-pend">0,00 €</div><div class="metric-count" id="m-cli-pend-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Em Atraso</div><div class="metric-value c-red" id="m-cli-venc">0,00 €</div><div class="metric-count" id="m-cli-venc-n">0 faturas</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px">💰 Cash Flow Projetado</div>
+        <div class="three-col" id="dash-cashflow"></div>
+      </div>
+
+      <div class="two-col" style="margin-bottom:20px">
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:14px">📊 Últimos 6 Meses</div>
+          <canvas id="chart-mensal" height="160"></canvas>
         </div>
-        <div class="metric">
-          <div class="metric-label">A Pagar</div>
-          <div class="metric-value c-red" id="m-pagar">0,00 €</div>
-          <div class="metric-count" id="m-pagar-n">—</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Recebido</div>
-          <div class="metric-value c-green" id="m-recebido">0,00 €</div>
-          <div class="metric-count" id="m-recebido-n">—</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Pago</div>
-          <div class="metric-value c-muted" id="m-pago">0,00 €</div>
-          <div class="metric-count" id="m-pago-n">—</div>
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:14px">🗂 Distribuição por Pasta</div>
+          <canvas id="chart-pastas" height="160"></canvas>
+          <div id="chart-pastas-legend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
       </div>
+
       <div class="two-col">
         <div class="card">
           <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Faturas Recentes</div>
@@ -399,6 +411,9 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Chart.js: gráficos -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
 <!-- PDF.js: extracção de texto de PDFs no browser -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

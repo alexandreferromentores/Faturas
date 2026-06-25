@@ -1,30 +1,55 @@
 // ─── render.js ────────────────────────────────────────────────────────────────
 // Todas as funções que constroem e actualizam o HTML das páginas.
 
+let chartMensal = null;
+let chartPasstas = null;
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function renderDashboard() {
-  const fornecedores = invoices.filter(i => !isClient(i));
-  const clientes     = invoices.filter(i => isClient(i));
+  const forn = invoices.filter(i => !isClient(i));
+  const cli  = invoices.filter(i => isClient(i));
 
-  const aPagar   = fornecedores.filter(i => !isPaid(i)).reduce((s, i) => s + toNum(i.total), 0);
-  const aReceber = clientes.filter(i => !isPaid(i)).reduce((s, i) => s + toNum(i.total), 0);
-  const pago     = fornecedores.filter(isPaid).reduce((s, i) => s + toNum(i.total), 0);
-  const recebido = clientes.filter(isPaid).reduce((s, i) => s + toNum(i.total), 0);
+  // Métricas fornecedores
+  const fornTotal = forn.reduce((s, i) => s + toNum(i.total), 0);
+  const fornPago  = forn.filter(isPaid).reduce((s, i) => s + toNum(i.total), 0);
+  const fornPend  = forn.filter(i => !isPaid(i) && !isOverdue(i)).reduce((s, i) => s + toNum(i.total), 0);
+  const fornVenc  = forn.filter(isOverdue).reduce((s, i) => s + toNum(i.total), 0);
 
-  document.getElementById('m-receber').textContent    = fmt(aReceber);
-  document.getElementById('m-pagar').textContent      = fmt(aPagar);
-  document.getElementById('m-recebido').textContent   = fmt(recebido);
-  document.getElementById('m-pago').textContent       = fmt(pago);
-  document.getElementById('m-receber-n').textContent  = clientes.filter(i => !isPaid(i)).length + ' pendentes';
-  document.getElementById('m-pagar-n').textContent    = fornecedores.filter(i => !isPaid(i)).length + ' pendentes';
-  document.getElementById('m-recebido-n').textContent = clientes.filter(isPaid).length + ' recebidas';
-  document.getElementById('m-pago-n').textContent     = fornecedores.filter(isPaid).length + ' pagas';
+  document.getElementById('m-forn-total').textContent   = fmt(fornTotal);
+  document.getElementById('m-forn-pago').textContent    = fmt(fornPago);
+  document.getElementById('m-forn-pend').textContent    = fmt(fornPend);
+  document.getElementById('m-forn-venc').textContent    = fmt(fornVenc);
+  document.getElementById('m-forn-total-n').textContent = forn.length + ' faturas';
+  document.getElementById('m-forn-pago-n').textContent  = forn.filter(isPaid).length + ' faturas';
+  document.getElementById('m-forn-pend-n').textContent  = forn.filter(i => !isPaid(i) && !isOverdue(i)).length + ' faturas';
+  document.getElementById('m-forn-venc-n').textContent  = forn.filter(isOverdue).length + ' faturas';
+
+  // Métricas clientes
+  const cliTotal = cli.reduce((s, i) => s + toNum(i.total), 0);
+  const cliRec   = cli.filter(isPaid).reduce((s, i) => s + toNum(i.total), 0);
+  const cliPend  = cli.filter(i => !isPaid(i) && !isOverdue(i)).reduce((s, i) => s + toNum(i.total), 0);
+  const cliVenc  = cli.filter(isOverdue).reduce((s, i) => s + toNum(i.total), 0);
+
+  document.getElementById('m-cli-total').textContent   = fmt(cliTotal);
+  document.getElementById('m-cli-rec').textContent     = fmt(cliRec);
+  document.getElementById('m-cli-pend').textContent    = fmt(cliPend);
+  document.getElementById('m-cli-venc').textContent    = fmt(cliVenc);
+  document.getElementById('m-cli-total-n').textContent = cli.length + ' faturas';
+  document.getElementById('m-cli-rec-n').textContent   = cli.filter(isPaid).length + ' faturas';
+  document.getElementById('m-cli-pend-n').textContent  = cli.filter(i => !isPaid(i) && !isOverdue(i)).length + ' faturas';
+  document.getElementById('m-cli-venc-n').textContent  = cli.filter(isOverdue).length + ' faturas';
+
+  // Cash flow projetado
+  renderCashFlow();
+
+  // Gráficos
+  renderChartMensal();
+  renderChartPasstas();
 
   // Faturas recentes
   const recent = [...invoices]
     .sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''))
     .slice(0, 5);
-
   document.getElementById('dash-recent').innerHTML = recent.length === 0
     ? '<p style="color:var(--muted);font-size:13px">Sem faturas ainda.</p>'
     : recent.map(i => `
@@ -45,7 +70,6 @@ function renderDashboard() {
       && daysDiff(i.vencimento) <= 14 && daysDiff(i.vencimento) >= 0)
     .sort((a, b) => (parseDate(a.vencimento) || 0) - (parseDate(b.vencimento) || 0))
     .slice(0, 6);
-
   document.getElementById('dash-venc').innerHTML = upcoming.length === 0
     ? '<p style="color:var(--muted);font-size:13px">Sem vencimentos nos próximos 14 dias.</p>'
     : upcoming.map(i => `
@@ -59,6 +83,142 @@ function renderDashboard() {
             ${dueBadge(i)}
           </div>
         </div>`).join('');
+}
+
+// ─── Cash flow projetado ──────────────────────────────────────────────────────
+function renderCashFlow() {
+  const now = new Date();
+  const cf = [
+    { label: 'Próximos 30d', from: 0,  to: 30  },
+    { label: 'Dias 31–60',   from: 31, to: 60  },
+    { label: 'Dias 61–90',   from: 61, to: 90  },
+  ].map(({ label, from, to }) => {
+    const start = new Date(now); start.setDate(now.getDate() + from);
+    const end   = new Date(now); end.setDate(now.getDate() + to);
+    const saidas = invoices.filter(i => !isClient(i) && !isPaid(i) && i.vencimento)
+      .filter(i => { const d = parseDate(i.vencimento); return d && d >= start && d <= end; })
+      .reduce((s, i) => s + toNum(i.total), 0);
+    const entradas = invoices.filter(i => isClient(i) && !isPaid(i) && i.vencimento)
+      .filter(i => { const d = parseDate(i.vencimento); return d && d >= start && d <= end; })
+      .reduce((s, i) => s + toNum(i.total), 0);
+    return { label, saidas, entradas, net: entradas - saidas };
+  });
+
+  document.getElementById('dash-cashflow').innerHTML = cf.map(({ label, saidas, entradas, net }) => {
+    const pos = net >= 0;
+    const col = pos ? 'var(--green)' : 'var(--red)';
+    const bg  = pos ? 'var(--green-bg)' : 'var(--red-bg)';
+    const brd = pos ? 'var(--green-border)' : 'var(--red-border)';
+    return `<div style="background:${bg};border:1px solid ${brd};border-radius:var(--r);padding:14px 16px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:6px">${label}</div>
+      <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:${col}">${net >= 0 ? '+' : ''}${fmt(net)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Saídas: ${fmt(saidas)}</div>
+      <div style="font-size:11px;color:var(--muted)">Entradas: ${fmt(entradas)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Gráfico: últimos 6 meses ─────────────────────────────────────────────────
+function renderChartMensal() {
+  const canvas = document.getElementById('chart-mensal');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const now = new Date();
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '');
+    months.push({ key, label, entradas: 0, saidas: 0 });
+  }
+
+  invoices.forEach(inv => {
+    const parts = (inv.emissao || '').split('/');
+    if (parts.length < 3) return;
+    const key = `${parts[2]}-${parts[1]}`;
+    const m = months.find(x => x.key === key);
+    if (!m) return;
+    if (isClient(inv)) m.entradas += toNum(inv.total);
+    else m.saidas += toNum(inv.total);
+  });
+
+  if (chartMensal) chartMensal.destroy();
+  chartMensal = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: months.map(m => m.label),
+      datasets: [
+        {
+          label: 'Entradas',
+          data: months.map(m => m.entradas),
+          backgroundColor: 'rgba(27,107,69,.7)',
+          borderRadius: 4,
+        },
+        {
+          label: 'Saídas',
+          data: months.map(m => m.saidas),
+          backgroundColor: 'rgba(139,26,26,.7)',
+          borderRadius: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 }, callback: v => v.toLocaleString('pt-PT') + ' €' } },
+      },
+    },
+  });
+}
+
+// ─── Gráfico: distribuição por pasta ─────────────────────────────────────────
+function renderChartPasstas() {
+  const canvas = document.getElementById('chart-pastas');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const forn = invoices.filter(i => !isClient(i));
+  const map  = {};
+  forn.forEach(inv => {
+    const p   = getPasta(inv.pastaId);
+    const key = p ? p.nome : 'Sem pasta';
+    map[key]  = (map[key] || 0) + toNum(inv.total);
+  });
+
+  const labels = Object.keys(map);
+  const values = Object.values(map);
+  const colors = [
+    '#1A3A5C', '#1B6B45', '#8B1A1A', '#7A4F00', '#4A2080', '#0E6B8A',
+    '#2E6BA8', '#2E8B57', '#B22222', '#DAA520',
+  ];
+
+  if (chartPasstas) chartPasstas.destroy();
+
+  if (labels.length === 0) {
+    document.getElementById('chart-pastas-legend').innerHTML =
+      '<p style="color:var(--muted);font-size:12px">Sem dados ainda.</p>';
+    return;
+  }
+
+  chartPasstas = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderWidth: 2, borderColor: '#fff' }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      cutout: '60%',
+    },
+  });
+
+  document.getElementById('chart-pastas-legend').innerHTML = labels.map((l, i) => `
+    <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text)">
+      <div style="width:10px;height:10px;border-radius:2px;background:${colors[i]};flex-shrink:0"></div>
+      ${l}
+    </div>`).join('');
 }
 
 // ─── Fornecedores ─────────────────────────────────────────────────────────────

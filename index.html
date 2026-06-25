@@ -26,6 +26,7 @@
       <div class="nav-item" onclick="nav('fornecedores')"><span class="ic">🏢</span> Fornecedores</div>
       <div class="nav-item" onclick="nav('clientes')"><span class="ic">👤</span> Clientes</div>
       <div class="nav-item" onclick="nav('nova')"><span class="ic">＋</span> Nova Fatura</div>
+      <div class="nav-item" onclick="nav('pesquisa')"><span class="ic">🔍</span> Pesquisa</div>
       <div class="nav-group">Organização</div>
       <div class="nav-item" onclick="nav('pastas')"><span class="ic">📁</span> Pastas</div>
       <div class="nav-item" onclick="nav('assistente')"><span class="ic">✦</span> Assistente IA</div>
@@ -114,6 +115,8 @@
         <button class="btn btn-primary" onclick="openManual('fornecedor')">＋ Manual</button>
       </div>
       <div class="filters">
+        <input class="finp" id="ff-de" type="text" placeholder="De: MM/AAAA" oninput="renderForn()" style="width:130px">
+        <input class="finp" id="ff-ate" type="text" placeholder="Até: MM/AAAA" oninput="renderForn()" style="width:130px">
         <select class="fsel" id="ff-estado" onchange="renderForn()">
           <option value="">Todos os estados</option>
           <option value="pendente">Pendente</option>
@@ -157,6 +160,8 @@
         <button class="btn btn-primary" onclick="openManual('cliente')">＋ Manual</button>
       </div>
       <div class="filters">
+        <input class="finp" id="cf-de" type="text" placeholder="De: MM/AAAA" oninput="renderCli()" style="width:130px">
+        <input class="finp" id="cf-ate" type="text" placeholder="Até: MM/AAAA" oninput="renderCli()" style="width:130px">
         <select class="fsel" id="cf-estado" onchange="renderCli()">
           <option value="">Todos os estados</option>
           <option value="pendente">Pendente</option>
@@ -261,6 +266,41 @@
       </div>
     </div>
 
+    <!-- PESQUISA GLOBAL -->
+    <div id="page-pesquisa" class="page">
+      <div class="page-header">
+        <div><div class="page-title">Pesquisa</div><div class="page-sub">Encontra qualquer fatura</div></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <input class="finp" id="pesq-texto" placeholder="Entidade, número, descritivo…" oninput="renderPesquisa()" style="width:280px">
+        <select class="fsel" id="pesq-tipo" onchange="renderPesquisa()">
+          <option value="">Todos os tipos</option>
+          <option value="fornecedor">Fornecedor</option>
+          <option value="cliente">Cliente</option>
+        </select>
+        <select class="fsel" id="pesq-estado" onchange="renderPesquisa()">
+          <option value="">Todos os estados</option>
+          <option value="pendente">Pendente</option>
+          <option value="aprovada">Aprovada</option>
+          <option value="pago">Pago</option>
+          <option value="vencido">Vencido</option>
+        </select>
+        <input class="finp" id="pesq-de" type="text" placeholder="De: MM/AAAA" oninput="renderPesquisa()" style="width:130px">
+        <input class="finp" id="pesq-ate" type="text" placeholder="Até: MM/AAAA" oninput="renderPesquisa()" style="width:130px">
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tipo</th><th>Estado</th><th>Nº Fatura</th><th>Entidade</th><th>Emissão</th><th>Vencimento</th><th>Total</th><th>Pasta</th><th></th></tr></thead>
+            <tbody id="pesq-body"></tbody>
+          </table>
+        </div>
+        <div id="pesq-empty" class="empty" style="display:none">
+          <div class="empty-icon">🔍</div><h3>Sem resultados</h3><p>Tenta outros termos de pesquisa.</p>
+        </div>
+      </div>
+    </div>
+
     <!-- PASTAS -->
     <div id="page-pastas" class="page">
       <div class="page-header">
@@ -321,6 +361,7 @@
           <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Tudo guardado localmente no teu browser.</p>
           <div style="display:flex;gap:10px">
             <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportRelatorio()">📊 Relatório Mensal</button>
             <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑 Apagar tudo</button>
           </div>
         </div>
@@ -343,9 +384,12 @@
       <div class="form-group"><label>Pasta</label><select id="m-pasta"><option value="">Sem pasta</option></select></div>
       <div class="form-group"><label>Data de Emissão</label><input id="m-emissao" type="text" placeholder="DD/MM/AAAA"></div>
       <div class="form-group"><label>Data de Vencimento</label><input id="m-venc" type="text" placeholder="DD/MM/AAAA"></div>
-      <div class="form-group"><label>Base Tributável (€)</label><input id="m-base" type="text"></div>
+      <div class="form-group full"><label>Descritivo</label><input id="m-desc" type="text"></div>
+      <div class="form-group"><label>Valor Ilíquido (€)</label><input id="m-base" type="text"></div>
       <div class="form-group"><label>IVA (€)</label><input id="m-iva" type="text"></div>
-      <div class="form-group"><label>Total (€)</label><input id="m-total" type="text"></div>
+      <div class="form-group"><label>Retenção IRS (€)</label><input id="m-retencao" type="text"></div>
+      <div class="form-group"><label>Total Documento (€)</label><input id="m-totalDoc" type="text"></div>
+      <div class="form-group"><label>Total a Pagar (€)</label><input id="m-total" type="text"></div>
       <div class="form-group">
         <label>Estado</label>
         <select id="m-estado">
@@ -406,6 +450,17 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-wf')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveWF()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Detalhe de fatura ── -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal modal-wide">
+    <div class="modal-title" id="detail-title">Detalhe da Fatura</div>
+    <div id="detail-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-detail')">Fechar</button>
     </div>
   </div>
 </div>

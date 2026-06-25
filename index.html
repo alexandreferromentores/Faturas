@@ -216,14 +216,17 @@
           <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:16px">✓ Dados extraídos — confirma e corrige se necessário</div>
           <div class="form-grid">
             <div class="form-group"><label>Número da Fatura</label><input id="f-num" type="text"></div>
-            <div class="form-group"><label>Entidade</label><input id="f-ent" type="text"></div>
+            <div class="form-group"><label>Entidade (Prestador)</label><input id="f-ent" type="text"></div>
             <div class="form-group"><label>NIF</label><input id="f-nif" type="text"></div>
             <div class="form-group"><label>Pasta</label><select id="f-pasta"><option value="">Sem pasta</option></select></div>
             <div class="form-group"><label>Data de Emissão</label><input id="f-emissao" type="text" placeholder="DD/MM/AAAA"></div>
             <div class="form-group"><label>Data de Vencimento</label><input id="f-venc" type="text" placeholder="DD/MM/AAAA"></div>
-            <div class="form-group"><label>Base Tributável (€)</label><input id="f-base" type="text"></div>
+            <div class="form-group full"><label>Descritivo</label><input id="f-desc" type="text"></div>
+            <div class="form-group"><label>Valor Ilíquido (€)</label><input id="f-base" type="text"></div>
             <div class="form-group"><label>IVA (€)</label><input id="f-iva" type="text"></div>
-            <div class="form-group"><label>Total (€)</label><input id="f-total" type="text"></div>
+            <div class="form-group"><label>Retenção na Fonte IRS (€)</label><input id="f-retencao" type="text"></div>
+            <div class="form-group"><label>Total do Documento (€)</label><input id="f-totalDoc" type="text"></div>
+            <div class="form-group"><label>Total a Pagar (€)</label><input id="f-total" type="text"></div>
             <div class="form-group">
               <label>Estado</label>
               <select id="f-estado">

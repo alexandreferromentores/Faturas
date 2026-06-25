@@ -44,3 +44,73 @@ function clearAll() {
   updateAlertBadge();
   toast('Dados apagados');
 }
+
+// ─── Relatório Mensal ─────────────────────────────────────────────────────────
+function exportRelatorio() {
+  const meses = {};
+
+  invoices.forEach(inv => {
+    const parts = (inv.emissao || '').split('/');
+    if (parts.length < 3) return;
+    const key   = `${parts[2]}-${parts[1]}`;
+    const label = `${parts[1]}/${parts[2]}`;
+    if (!meses[key]) meses[key] = { label, entradas: 0, saidas: 0, iva: 0, retencoes: 0, faturas: [] };
+    const m = meses[key];
+    if (isClient(inv)) m.entradas += toNum(inv.total);
+    else               m.saidas   += toNum(inv.total);
+    m.iva       += toNum(inv.iva);
+    m.retencoes += toNum(inv.retencao);
+    m.faturas.push(inv);
+  });
+
+  const sortedKeys = Object.keys(meses).sort();
+  const linhas = [];
+  linhas.push('Mês,Entradas (€),Saídas (€),Saldo (€),IVA Total (€),Retenções IRS (€),Nº Faturas');
+
+  sortedKeys.forEach(k => {
+    const m = meses[k];
+    const saldo = m.entradas - m.saidas;
+    linhas.push([
+      m.label,
+      m.entradas.toFixed(2),
+      m.saidas.toFixed(2),
+      saldo.toFixed(2),
+      m.iva.toFixed(2),
+      m.retencoes.toFixed(2),
+      m.faturas.length,
+    ].join(','));
+  });
+
+  linhas.push('');
+  linhas.push('--- DETALHE ---');
+  linhas.push('Mês,Tipo,Número,Entidade,NIF,Emissão,Vencimento,Ilíquido,IVA,Retenção IRS,Total Doc,Total Pagar,Estado,Descritivo');
+
+  sortedKeys.forEach(k => {
+    meses[k].faturas.forEach(inv => {
+      const parts = (inv.emissao || '').split('/');
+      const label = parts.length === 3 ? `${parts[1]}/${parts[2]}` : '';
+      linhas.push([
+        label,
+        isClient(inv) ? 'Cliente' : 'Fornecedor',
+        inv.numero    || '',
+        inv.entidade  || '',
+        inv.nif       || '',
+        inv.emissao   || '',
+        inv.vencimento || '',
+        inv.base      || '',
+        inv.iva       || '',
+        inv.retencao  || '',
+        inv.totalDoc  || '',
+        inv.total     || '',
+        inv.estado    || '',
+        (inv.descritivo || '').replace(/,/g, ';'),
+      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+    });
+  });
+
+  const csv = linhas.join('\n');
+  const a   = document.createElement('a');
+  a.href     = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `relatorio_faturas_${new Date().toISOString().slice(0,7)}.csv`;
+  a.click();
+}

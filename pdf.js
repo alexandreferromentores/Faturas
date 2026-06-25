@@ -46,35 +46,19 @@ async function readPDFText(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    // Preserva quebras de linha por bloco usando transform Y
-    let lastY = null;
-    let line = [];
-    const lines = [];
-    for (const item of content.items) {
-      const y = Math.round(item.transform[5]);
-      if (lastY !== null && Math.abs(y - lastY) > 3) {
-        lines.push(line.join(' '));
-        line = [];
-      }
-      line.push(item.str);
-      lastY = y;
-    }
-    if (line.length) lines.push(line.join(' '));
-    pages.push(lines.join('\n'));
+    pages.push(content.items.map(item => item.str).join(' '));
   }
-  return pages.join('\n');
+  return pages.join(' ');
 }
 
 // ─── Parser local: Recibo Verde (AT) ─────────────────────────────────────────
-// Layout da Fatura-Recibo emitida pelo Portal das Finanças (AT).
-// Campos extraídos:
-//   numero, entidade (prestador), nif, emissao, vencimento (emissao + 60 dias),
-//   descritivo, base (valor ilíquido), iva, retencao, totalDoc, total (a pagar)
+// Baseado no layout real extraído do PDF.js.
+// O texto é uma linha contínua — os padrões reflectem isso.
 function parseReciboVerde(text) {
 
   // ── Número da fatura ────────────────────────────────────────────────────────
-  // Formato: "Fatura-Recibo <FR ATSIRE01FR/22>"
-  const numMatch = text.match(/<([A-Z]{2}[^>]{2,40})>/);
+  // Formato: "<FR ATSIRE01FR/22>"
+  const numMatch = text.match(/<(FR\s+[^>]{2,40})>/i);
   const numero   = numMatch ? numMatch[1].trim() : '';
 
   // ── Data de emissão ─────────────────────────────────────────────────────────
@@ -90,32 +74,47 @@ function parseReciboVerde(text) {
     vencimento = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
   }
 
-  // ── Prestador (fornecedor) ──────────────────────────────────────────────────
-  // Layout AT: linha com "NOME  [NOME_PRESTADOR]" seguida de linha com "DOMICÍLIO"
-  // O PDF.js junta numa linha: "NOME ANTONIO MANUEL ... DOMICÍLIO LG PIAL..."
-  // Estratégia: captura tudo entre "NOME" e "DOMICÍLIO" na secção do transmitente
-  const prestMatch = text.match(/NOME\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ\s&.\-]+?)\s+DOM[IÍ]C[IÍ]LIO/i);
-  const entidade   = prestMatch ? prestMatch[1].replace(/\s+/g, ' ').trim() : '';
-
   // ── NIF do prestador ────────────────────────────────────────────────────────
-  // Formato: "NÚMERO DE IDENTIFICAÇÃO FISCAL (NIF) -  169277895"
-  const nifMatch = text.match(/IDENTIFICAÇÃO FISCAL\s*\(NIF\)\s*[-–]\s*(\d{9})/i);
+  // O NIF do prestador aparece antes de "TRAVESSA" (morada do adquirente)
+  // Formato: "SBR 169277895 TRAVESSA"
+  const nifMatch = text.match(/\b(\d{9})\s+TRAVESSA/i);
   const nif      = nifMatch ? nifMatch[1] : '';
 
+  // ── Prestador (fornecedor) ──────────────────────────────────────────────────
+  // O nome aparece depois da data de realização dos serviços e antes de "MENTORES"
+  // Formato: "29/11/2024  ANTONIO MANUEL BORGES DIAS PEREIRA DE JESUS  MENTORES"
+  const dataRealizacao = emissao; // normalmente igual à data de emissão
+  const prestMatch = text.match(
+    new RegExp(dataRealizacao.replace(/\//g, '\\/') +
+      '\\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ\\s]+?)\\s+(?:MENTORES|ASSOCIA)', 'i')
+  );
+  // Fallback: captura entre o NIF e "MENTORES"
+  const prestFallback = text.match(
+    /\b\d{9}\s+(?:TRAVESSA[^A-Z]*?)\s*([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ\s]+?)\s+(?:MENTORES|ASSOCIA)/i
+  );
+  const entidade = prestMatch
+    ? prestMatch[1].replace(/\s+/g, ' ').trim()
+    : prestFallback
+      ? prestFallback[1].replace(/\s+/g, ' ').trim()
+      : '';
+
   // ── Descritivo ──────────────────────────────────────────────────────────────
-  // Extrai o texto da linha de descrição do serviço (entre "DESCRIÇÃO" e "QTD")
-  const descMatch = text.match(/DESCRIÇÃO[\s\S]*?QTD[\s\S]*?\n([^\n]+)\n/i);
+  // Aparece depois de "TAXA IVA" e antes de "OUT -" ou similar
+  // Formato: "TAXA IVA OUT - UFCD4552-Forestecort Serviço Serviços de formação (...)"
+  const descMatch = text.match(/TAXA\s+IVA\s+([\w\s\-,.()\u00C0-\u024F]{10,200?}?)\s+(?:S\/IVA|C\/IVA|\d+,\d{2}\s*€)/i);
   const descritivo = descMatch ? descMatch[1].replace(/\s+/g, ' ').trim() : '';
 
   // ── Helper: extrai valor monetário após label ────────────────────────────────
   const money = (pattern) => {
-    const m = text.match(new RegExp(pattern + '[^\\d\\n]*([\\d]+[,.]\\d{2})', 'i'));
-    return m ? m[1].replace('.', '').replace(',', '.') : '';
+    const m = text.match(new RegExp(pattern + '[^\\d]*([\\d]+[,.]\\d{2})', 'i'));
+    return m ? m[1].replace(/\./g, '').replace(',', '.') : '';
   };
 
   // ── Valores ─────────────────────────────────────────────────────────────────
   const base     = money('Valor il[ií]quido');
-  const iva      = money('\\bIVA\\b(?!\\s*\\d+\\s*%)');
+  // IVA: apanhar o valor depois de "IVA" mas antes de "Imposto do Selo"
+  const ivaMatch = text.match(/\bIVA\b\s+([\d]+[,.][\d]{2})\s*€\s*Imposto/i);
+  const iva      = ivaMatch ? ivaMatch[1].replace(',', '.') : money('\\bIVA\\b[^%\\d]{0,10}(?!\\d+\\s*%)');
   const retencao = money('Reten[çc][aã]o na fonte IRS');
   const totalDoc = money('TOTAL DO DOCUMENTO');
   const total    = money('TOTAL A PAGAR') || totalDoc;
@@ -159,18 +158,18 @@ async function extractPDFApi(b64, apiKey) {
 
 // ─── Preenche formulário ──────────────────────────────────────────────────────
 function fillExtracted(data) {
-  document.getElementById('f-num').value       = data.numero     || '';
-  document.getElementById('f-ent').value       = data.entidade   || '';
-  document.getElementById('f-nif').value       = data.nif        || '';
-  document.getElementById('f-emissao').value   = data.emissao    || '';
-  document.getElementById('f-venc').value      = data.vencimento || '';
-  document.getElementById('f-desc').value      = data.descritivo || '';
-  document.getElementById('f-base').value      = data.base       || '';
-  document.getElementById('f-iva').value       = data.iva        || '';
-  document.getElementById('f-retencao').value  = data.retencao   || '';
-  document.getElementById('f-totalDoc').value  = data.totalDoc   || '';
-  document.getElementById('f-total').value     = data.total      || '';
-  document.getElementById('f-estado').value    = 'pendente';
+  document.getElementById('f-num').value      = data.numero     || '';
+  document.getElementById('f-ent').value      = data.entidade   || '';
+  document.getElementById('f-nif').value      = data.nif        || '';
+  document.getElementById('f-emissao').value  = data.emissao    || '';
+  document.getElementById('f-venc').value     = data.vencimento || '';
+  document.getElementById('f-desc').value     = data.descritivo || '';
+  document.getElementById('f-base').value     = data.base       || '';
+  document.getElementById('f-iva').value      = data.iva        || '';
+  document.getElementById('f-retencao').value = data.retencao   || '';
+  document.getElementById('f-totalDoc').value = data.totalDoc   || '';
+  document.getElementById('f-total').value    = data.total      || '';
+  document.getElementById('f-estado').value   = 'pendente';
 }
 
 // ─── Verificação de duplicado ─────────────────────────────────────────────────

@@ -2,9 +2,6 @@
 // Upload de PDF, parser local para Recibo Verde (AT) e fallback via API.
 // Usa PDF.js (Mozilla) para extracção de texto fiável.
 
-// PDF.js é carregado via CDN no index.html — não precisa de instalação.
-// Versão usada: 3.x (legacy build compatível com browsers modernos)
-
 // ─── Drag & drop ──────────────────────────────────────────────────────────────
 function dragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag'); }
 function dragLeave()  { document.getElementById('upload-zone').classList.remove('drag'); }
@@ -16,26 +13,28 @@ function dropFile(e) {
   else toast('Apenas PDF', 'error');
 }
 
-// ─── Entrada principal ────────────────────────────────────────────────────────
+// ─── Entrada principal (MODO DEBUG) ──────────────────────────────────────────
+// Mostra o texto extraído pelo PDF.js para diagnóstico.
+// Quando o parser estiver a funcionar, substituir por a versão normal.
 async function handleFile(file) {
   document.getElementById('loading-ext').classList.add('show');
   document.getElementById('extracted-box').style.display = 'none';
   document.getElementById('dup-warn').style.display = 'none';
   try {
     const text = await readPDFText(file);
-    let data = parseReciboVerde(text);
 
-    // Se o parser local não reconheceu o documento e há API key, usa IA
-    if (!data.entidade && !data.numero && config.apiKey) {
-      const b64 = await toBase64(file);
-      data = await extractPDFApi(b64, config.apiKey);
+    // DEBUG: mostra o texto extraído numa caixa temporária
+    let debugBox = document.getElementById('debug-box');
+    if (!debugBox) {
+      debugBox = document.createElement('div');
+      debugBox.id = 'debug-box';
+      debugBox.style.cssText = 'background:#f0f0f0;border:1px solid #ccc;padding:16px;margin:16px 0;font-family:monospace;font-size:11px;white-space:pre-wrap;max-height:400px;overflow-y:auto;border-radius:6px';
+      document.getElementById('page-nova').appendChild(debugBox);
     }
+    debugBox.textContent = '=== TEXTO EXTRAÍDO DO PDF ===\n\n' + text;
 
-    fillExtracted(data);
-    checkDuplicate(data);
-    document.getElementById('extracted-box').style.display = 'block';
   } catch (e) {
-    toast('Erro na extração: ' + e.message, 'error');
+    toast('Erro: ' + e.message, 'error');
     console.error(e);
   }
   document.getElementById('loading-ext').classList.remove('show');
@@ -49,7 +48,6 @@ async function readPDFText(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    // Junta os items de texto com espaço, preservando quebras de linha por bloco
     const pageText = content.items.map(item => item.str).join(' ');
     pages.push(pageText);
   }
@@ -57,46 +55,33 @@ async function readPDFText(file) {
 }
 
 // ─── Parser local: Recibo Verde (AT) ─────────────────────────────────────────
-// Funciona com Fatura-Recibo emitida pelo Portal das Finanças.
-// Para adicionar suporte a outros tipos, cria uma função parseXxx(text)
-// e chama-a em handleFile antes do fallback para API.
 function parseReciboVerde(text) {
-  // Número: "FR ATSIRE01FR/22" dentro de < >
   const numMatch = text.match(/<([^>]{3,40})>/);
   const numero   = numMatch ? numMatch[1].trim() : '';
 
-  // Data de emissão
   const emissaoMatch = text.match(/emitida em\s+(\d{2}\/\d{2}\/\d{4})/i);
   const emissao      = emissaoMatch ? emissaoMatch[1] : '';
 
-  // Prestador: nome depois de "NOME" antes de "DOMICÍLIO"
   const prestadorMatch = text.match(/NOME\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][^]+?)\s+DOM[IÍ]C[IÍ]LIO/i);
   const entidade       = prestadorMatch ? prestadorMatch[1].replace(/\s+/g, ' ').trim() : '';
 
-  // NIF do prestador
   const nifMatch = text.match(/(?:NIF|FISCAL)\s*[)\-–:]\s*(\d{9})/i);
   const nif      = nifMatch ? nifMatch[1] : '';
 
-  // Helper monetário: extrai o primeiro valor após o label
   const money = pattern => {
     const m = text.match(new RegExp(pattern + '[^\\d]*([\\d]+[.,][\\d]{2})', 'i'));
     return m ? m[1].replace('.', '').replace(',', '.') : '';
   };
 
   const base  = money('Valor il[ií]quido');
-  const iva   = money('\\bIVA\\b(?!\\s+\\d+\\s*%)(?:[^\\d]*\\d+[.,]\\d{2}[^\\d]*){0,3}');
+  const ivaTotsMatch = text.match(/\bIVA\b\s+([\d]+[.,][\d]{2})\s*€?/i);
+  const iva   = ivaTotsMatch ? ivaTotsMatch[1].replace('.', '').replace(',', '.') : '';
   const total = money('TOTAL A PAGAR') || money('TOTAL DO DOCUMENTO');
 
-  // IVA: tenta linha de totais directamente
-  const ivaTotsMatch = text.match(/\bIVA\b\s+([\d]+[.,][\d]{2})\s*€?/i);
-  const ivaFinal = ivaTotsMatch
-    ? ivaTotsMatch[1].replace('.', '').replace(',', '.')
-    : iva;
-
-  return { numero, entidade, nif, emissao, vencimento: '', base, iva: ivaFinal, total };
+  return { numero, entidade, nif, emissao, vencimento: '', base, iva, total };
 }
 
-// ─── toBase64 (para fallback API) ────────────────────────────────────────────
+// ─── toBase64 ─────────────────────────────────────────────────────────────────
 function toBase64(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();

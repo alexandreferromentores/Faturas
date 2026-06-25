@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faturas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Navegação lateral ── -->
+  <nav>
+    <div class="nav-logo">
+      <span>faturas/</span>
+      <small>gestão de pagamentos</small>
+    </div>
+    <div class="nav-items">
+      <div class="nav-group">Geral</div>
+      <div class="nav-item active" onclick="nav('dashboard')"><span class="ic">⊞</span> Dashboard</div>
+      <div class="nav-item" onclick="nav('alertas')">
+        <span class="ic">🔔</span> Alertas
+        <span class="nav-badge red" id="badge-alertas" style="display:none">0</span>
+      </div>
+      <div class="nav-group">Faturas</div>
+      <div class="nav-item" onclick="nav('fornecedores')"><span class="ic">🏢</span> Fornecedores</div>
+      <div class="nav-item" onclick="nav('clientes')"><span class="ic">👤</span> Clientes</div>
+      <div class="nav-item" onclick="nav('nova')"><span class="ic">＋</span> Nova Fatura</div>
+      <div class="nav-group">Organização</div>
+      <div class="nav-item" onclick="nav('pastas')"><span class="ic">📁</span> Pastas</div>
+      <div class="nav-item" onclick="nav('assistente')"><span class="ic">✦</span> Assistente IA</div>
+    </div>
+    <div class="nav-bottom">
+      <div class="nav-settings" onclick="nav('config')">⚙ Configuração</div>
+    </div>
+  </nav>
+
+  <!-- ── Conteúdo principal ── -->
+  <main>
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Visão geral financeira</div>
+        </div>
+        <button class="btn btn-primary" onclick="nav('nova')">＋ Nova Fatura</button>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">A Receber</div>
+          <div class="metric-value c-blue" id="m-receber">0,00 €</div>
+          <div class="metric-count" id="m-receber-n">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">A Pagar</div>
+          <div class="metric-value c-red" id="m-pagar">0,00 €</div>
+          <div class="metric-count" id="m-pagar-n">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Recebido</div>
+          <div class="metric-value c-green" id="m-recebido">0,00 €</div>
+          <div class="metric-count" id="m-recebido-n">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Pago</div>
+          <div class="metric-value c-muted" id="m-pago">0,00 €</div>
+          <div class="metric-count" id="m-pago-n">—</div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Faturas Recentes</div>
+          <div id="dash-recent"></div>
+        </div>
+        <div class="card">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Vencimentos Próximos</div>
+          <div id="dash-venc"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div id="page-alertas" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Alertas</div>
+          <div class="page-sub">Faturas que precisam de atenção</div>
+        </div>
+      </div>
+      <div class="card"><div id="alertas-list"></div></div>
+    </div>
+
+    <!-- FORNECEDORES -->
+    <div id="page-fornecedores" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Fornecedores</div>
+          <div class="page-sub" id="forn-count">0 faturas</div>
+        </div>
+        <button class="btn btn-primary" onclick="openManual('fornecedor')">＋ Manual</button>
+      </div>
+      <div class="filters">
+        <select class="fsel" id="ff-estado" onchange="renderForn()">
+          <option value="">Todos os estados</option>
+          <option value="pendente">Pendente</option>
+          <option value="aguarda">Ag. Aprovação</option>
+          <option value="aprovada">Aprovada</option>
+          <option value="pago">Pago</option>
+          <option value="vencido">Vencido</option>
+        </select>
+        <select class="fsel" id="ff-pasta" onchange="renderForn()">
+          <option value="">Todas as pastas</option>
+        </select>
+        <input class="finp" id="ff-search" placeholder="Pesquisar…" oninput="renderForn()">
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Estado</th><th>Nº Fatura</th><th>Fornecedor</th><th>NIF</th>
+                <th>Emissão</th><th>Vencimento</th><th>Total</th><th>Pasta</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="forn-body"></tbody>
+          </table>
+        </div>
+        <div id="forn-empty" class="empty" style="display:none">
+          <div class="empty-icon">🏢</div>
+          <h3>Sem faturas de fornecedores</h3>
+          <p>Adiciona a primeira fatura.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div id="page-clientes" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Clientes</div>
+          <div class="page-sub" id="cli-count">0 faturas</div>
+        </div>
+        <button class="btn btn-primary" onclick="openManual('cliente')">＋ Manual</button>
+      </div>
+      <div class="filters">
+        <select class="fsel" id="cf-estado" onchange="renderCli()">
+          <option value="">Todos os estados</option>
+          <option value="pendente">Pendente</option>
+          <option value="recebido">Recebido</option>
+          <option value="vencido">Vencido</option>
+        </select>
+        <select class="fsel" id="cf-pasta" onchange="renderCli()">
+          <option value="">Todas as pastas</option>
+        </select>
+        <input class="finp" id="cf-search" placeholder="Pesquisar…" oninput="renderCli()">
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Estado</th><th>Nº Fatura</th><th>Cliente</th><th>NIF</th>
+                <th>Emissão</th><th>Vencimento</th><th>Total</th><th>Pasta</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="cli-body"></tbody>
+          </table>
+        </div>
+        <div id="cli-empty" class="empty" style="display:none">
+          <div class="empty-icon">👤</div>
+          <h3>Sem faturas de clientes</h3>
+          <p>Adiciona a primeira fatura.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOVA FATURA -->
+    <div id="page-nova" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Nova Fatura</div>
+          <div class="page-sub">Upload de PDF ou introdução manual</div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:18px">
+        <div style="margin-bottom:16px">
+          <label style="display:block;margin-bottom:8px">Tipo</label>
+          <div style="display:flex;gap:16px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text)">
+              <input type="radio" name="novo-tipo" value="fornecedor" checked style="width:auto;padding:0;border:none"> Fornecedor (recebida)
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text)">
+              <input type="radio" name="novo-tipo" value="cliente" style="width:auto;padding:0;border:none"> Cliente (emitida)
+            </label>
+          </div>
+        </div>
+        <div class="upload-zone" id="upload-zone"
+          onclick="document.getElementById('file-inp').click()"
+          ondragover="dragOver(event)" ondragleave="dragLeave()" ondrop="dropFile(event)">
+          <div style="font-size:28px;margin-bottom:8px">📄</div>
+          <div style="font-size:14px;font-weight:500">Arrasta o PDF ou clica para selecionar</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Apenas ficheiros PDF</div>
+        </div>
+        <input type="file" id="file-inp" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+        <div class="loading" id="loading-ext">
+          <div class="spinner"></div> A extrair dados com IA…
+        </div>
+      </div>
+      <div id="dup-warn" class="dup-warning" style="display:none">
+        ⚠️ Possível duplicado detectado — verifica os dados antes de guardar.
+      </div>
+      <div id="extracted-box" style="display:none">
+        <div class="card">
+          <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:16px">✓ Dados extraídos — confirma e corrige se necessário</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Número da Fatura</label><input id="f-num" type="text"></div>
+            <div class="form-group"><label>Entidade</label><input id="f-ent" type="text"></div>
+            <div class="form-group"><label>NIF</label><input id="f-nif" type="text"></div>
+            <div class="form-group"><label>Pasta</label><select id="f-pasta"><option value="">Sem pasta</option></select></div>
+            <div class="form-group"><label>Data de Emissão</label><input id="f-emissao" type="text" placeholder="DD/MM/AAAA"></div>
+            <div class="form-group"><label>Data de Vencimento</label><input id="f-venc" type="text" placeholder="DD/MM/AAAA"></div>
+            <div class="form-group"><label>Base Tributável (€)</label><input id="f-base" type="text"></div>
+            <div class="form-group"><label>IVA (€)</label><input id="f-iva" type="text"></div>
+            <div class="form-group"><label>Total (€)</label><input id="f-total" type="text"></div>
+            <div class="form-group">
+              <label>Estado</label>
+              <select id="f-estado">
+                <option value="pendente">Pendente</option>
+                <option value="aguarda">Ag. Aprovação</option>
+                <option value="aprovada">Aprovada</option>
+                <option value="pago">Pago</option>
+              </select>
+            </div>
+            <div class="form-group full"><label>Notas</label><textarea id="f-notas"></textarea></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="btn btn-primary" onclick="saveFromPDF()">Guardar Fatura</button>
+            <button class="btn btn-ghost" onclick="resetUpload()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <button class="btn btn-ghost btn-sm" onclick="openManual(document.querySelector('[name=novo-tipo]:checked').value)">✏️ Introduzir manualmente</button>
+      </div>
+    </div>
+
+    <!-- PASTAS -->
+    <div id="page-pastas" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Pastas</div>
+          <div class="page-sub">Organiza as faturas por categoria</div>
+        </div>
+        <button class="btn btn-primary" onclick="openModalPasta()">＋ Nova Pasta</button>
+      </div>
+      <div id="pasta-grid" class="folder-grid"></div>
+      <div id="pasta-empty" class="empty" style="display:none">
+        <div class="empty-icon">📁</div>
+        <h3>Sem pastas criadas</h3>
+        <p>Cria categorias como "EDP", "Contabilidade", "Clientes".</p>
+      </div>
+    </div>
+
+    <!-- ASSISTENTE IA -->
+    <div id="page-assistente" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Assistente IA</div>
+          <div class="page-sub">Pergunta sobre faturas, cash flow ou pendentes</div>
+        </div>
+      </div>
+      <div class="chat-wrap">
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-inp" placeholder="Ex: Quanto tenho pendente este mês?" onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="btn btn-primary" onclick="sendChat()" id="chat-btn">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIGURAÇÃO -->
+    <div id="page-config" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Configuração</div>
+          <div class="page-sub">API Key e dados</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="margin-bottom:24px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">Anthropic API Key</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+            Necessária para extração automática de PDFs e Assistente IA.
+            Obtém em <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>
+          </p>
+          <div style="display:flex;gap:10px">
+            <input type="password" id="cfg-key" placeholder="sk-ant-…" style="flex:1;max-width:400px">
+            <button class="btn btn-primary" onclick="saveConfig()">Guardar</button>
+          </div>
+          <div id="cfg-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">Dados</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Tudo guardado localmente no teu browser.</p>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
+            <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑 Apagar tudo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Modal: Introdução manual ── -->
+<div class="modal-overlay" id="modal-manual">
+  <div class="modal modal-wide">
+    <div class="modal-title" id="modal-manual-title">Nova Fatura</div>
+    <input type="hidden" id="m-tipo">
+    <input type="hidden" id="m-edit-id">
+    <div class="form-grid">
+      <div class="form-group"><label>Entidade</label><input id="m-ent" type="text"></div>
+      <div class="form-group"><label>NIF</label><input id="m-nif" type="text"></div>
+      <div class="form-group"><label>Número da Fatura</label><input id="m-num" type="text"></div>
+      <div class="form-group"><label>Pasta</label><select id="m-pasta"><option value="">Sem pasta</option></select></div>
+      <div class="form-group"><label>Data de Emissão</label><input id="m-emissao" type="text" placeholder="DD/MM/AAAA"></div>
+      <div class="form-group"><label>Data de Vencimento</label><input id="m-venc" type="text" placeholder="DD/MM/AAAA"></div>
+      <div class="form-group"><label>Base Tributável (€)</label><input id="m-base" type="text"></div>
+      <div class="form-group"><label>IVA (€)</label><input id="m-iva" type="text"></div>
+      <div class="form-group"><label>Total (€)</label><input id="m-total" type="text"></div>
+      <div class="form-group">
+        <label>Estado</label>
+        <select id="m-estado">
+          <option value="pendente">Pendente</option>
+          <option value="aguarda">Ag. Aprovação</option>
+          <option value="aprovada">Aprovada</option>
+          <option value="pago">Pago / Recebido</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Notas</label><textarea id="m-notas"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-manual')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveManual()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Nova pasta ── -->
+<div class="modal-overlay" id="modal-pasta">
+  <div class="modal">
+    <div class="modal-title">Nova Pasta</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nome</label><input id="p-nome" type="text" placeholder="Ex: EDP, Contabilidade"></div>
+      <div class="form-group">
+        <label>Ícone</label>
+        <select id="p-icon">
+          <option>📁</option><option>🏢</option><option>⚡</option><option>💧</option><option>🌐</option>
+          <option>🚗</option><option>💼</option><option>🏥</option><option>📦</option><option>🔧</option>
+          <option>🎯</option><option>💡</option><option>🏠</option><option>🛒</option><option>📊</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Cor</label>
+        <div id="p-cor-opts" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pasta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePasta()">Criar Pasta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Workflow de estado ── -->
+<div class="modal-overlay" id="modal-wf">
+  <div class="modal">
+    <div class="modal-title" id="wf-title">Atualizar Estado</div>
+    <input type="hidden" id="wf-id">
+    <input type="hidden" id="wf-tipo">
+    <div class="wf-steps" id="wf-steps"></div>
+    <div id="wf-date-row" style="margin-top:16px;display:none">
+      <div class="form-group">
+        <label>Data de Pagamento / Recebimento</label>
+        <input id="wf-date" type="text" placeholder="DD/MM/AAAA">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-wf')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveWF()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

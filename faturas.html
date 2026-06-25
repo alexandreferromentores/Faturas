@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faturas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F5F4F0;
+    --surface: #FFFFFF;
+    --border: #E2DFD8;
+    --text: #1A1A1A;
+    --text-muted: #7A7570;
+    --accent: #1A3A5C;
+    --accent-light: #E8EEF5;
+    --green: #1B6B45;
+    --green-bg: #E8F5EE;
+    --red: #8B1A1A;
+    --red-bg: #F5E8E8;
+    --amber: #7A4F00;
+    --amber-bg: #FDF3DC;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Inter', sans-serif;
+    --radius: 6px;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* Layout */
+  .app { display: flex; min-height: 100vh; }
+
+  nav {
+    width: 220px;
+    background: var(--accent);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+  }
+
+  .nav-logo {
+    padding: 28px 24px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .nav-logo span {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+  .nav-logo small {
+    display: block;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .nav-items { padding: 16px 12px; flex: 1; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
+    transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 500; }
+  .nav-item svg { width: 15px; height: 15px; opacity: 0.8; }
+
+  .nav-bottom {
+    padding: 12px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .nav-settings {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .nav-settings:hover { color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.08); }
+
+  main {
+    margin-left: 220px;
+    flex: 1;
+    padding: 36px 40px;
+    max-width: 1100px;
+  }
+
+  /* Pages */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Page header */
+  .page-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+  .page-sub { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    font-family: var(--sans);
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #142d4a; }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: #bbb; color: var(--text); }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid #e8c0c0; }
+  .btn-danger:hover { background: #eecece; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+
+  /* Metrics row */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+  .metric-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  .metric-count { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .color-blue { color: var(--accent); }
+  .color-red { color: var(--red); }
+  .color-green { color: var(--green); }
+  .color-muted { color: var(--text-muted); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #FAFAF8; }
+  td {
+    padding: 11px 14px;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  td.mono { font-family: var(--mono); font-size: 12px; }
+
+  /* Status badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-pago { background: var(--green-bg); color: var(--green); }
+  .badge-pendente { background: var(--amber-bg); color: var(--amber); }
+  .badge-vencido { background: var(--red-bg); color: var(--red); }
+  .badge-emitida { background: var(--accent-light); color: var(--accent); }
+  .badge-recebida { background: #F0EEF8; color: #4A3580; }
+
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-select, .filter-input {
+    padding: 7px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: var(--sans);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border 0.15s;
+  }
+  .filter-select:focus, .filter-input:focus { border-color: var(--accent); }
+  .filter-input { width: 200px; }
+
+  /* Forms */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+  input, select, textarea {
+    padding: 8px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: var(--sans);
+    color: var(--text);
+    outline: none;
+    transition: border 0.15s;
+    background: var(--surface);
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 70px; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    margin-bottom: 24px;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-light); }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-text { font-size: 14px; font-weight: 500; color: var(--text); }
+  .upload-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  #file-input { display: none; }
+
+  /* Extraction result */
+  .extracted-box {
+    background: var(--accent-light);
+    border: 1px solid #C5D5E8;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: none;
+  }
+  .extracted-box.show { display: block; }
+  .extracted-header {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Loading */
+  .loading {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 0;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .loading.show { display: flex; }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--text);
+    color: #fff;
+    padding: 11px 18px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 1000;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 28px;
+    width: 420px;
+    max-width: 95vw;
+  }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* Settings */
+  .settings-section { margin-bottom: 28px; }
+  .settings-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty h3 { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .empty p { font-size: 13px; }
+
+  /* Chart bar */
+  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .bar-label { font-size: 12px; color: var(--text-muted); width: 80px; text-align: right; }
+  .bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .bar-val { font-family: var(--mono); font-size: 11px; color: var(--text-muted); width: 90px; }
+
+  .section-title-sm { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  /* action icon btn */
+  .icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    font-size: 14px;
+  }
+  .icon-btn:hover { background: var(--border); color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <nav>
+    <div class="nav-logo">
+      <span>faturas/</span>
+      <small>gestão de pagamentos</small>
+    </div>
+    <div class="nav-items">
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('nova')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Nova Fatura
+      </div>
+      <div class="nav-item" onclick="showPage('lista')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 5h6"/></svg>
+        Todas as Faturas
+      </div>
+    </div>
+    <div class="nav-bottom">
+      <div class="nav-settings" onclick="showPage('config')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Configuração
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main>
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Visão geral dos pagamentos</div>
+        </div>
+        <button class="btn btn-primary" onclick="showPage('nova')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Nova Fatura
+        </button>
+      </div>
+
+      <div class="metrics" id="metrics-row">
+        <div class="metric"><div class="metric-label">A Receber</div><div class="metric-value color-blue" id="m-receber">0,00 €</div><div class="metric-count" id="m-receber-n">0 pendentes</div></div>
+        <div class="metric"><div class="metric-label">A Pagar</div><div class="metric-value color-red" id="m-pagar">0,00 €</div><div class="metric-count" id="m-pagar-n">0 pendentes</div></div>
+        <div class="metric"><div class="metric-label">Recebido</div><div class="metric-value color-green" id="m-recebido">0,00 €</div><div class="metric-count" id="m-recebido-n">0 pagas</div></div>
+        <div class="metric"><div class="metric-label">Pago</div><div class="metric-value color-muted" id="m-pago">0,00 €</div><div class="metric-count" id="m-pago-n">0 pagas</div></div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="section-title-sm">Faturas Recentes</div>
+          <div id="dash-recent"></div>
+        </div>
+        <div class="card">
+          <div class="section-title-sm">Vencimentos Próximos</div>
+          <div id="dash-vencimentos"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOVA FATURA -->
+    <div id="page-nova" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Nova Fatura</div>
+          <div class="page-sub">Upload do PDF para extração automática</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div style="margin-bottom:16px">
+          <label style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;display:block">Tipo de fatura</label>
+          <div style="display:flex;gap:12px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text)">
+              <input type="radio" name="tipo" value="Emitida" checked style="width:auto;padding:0;border:none"> Emitida (enviei ao cliente)
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text)">
+              <input type="radio" name="tipo" value="Recebida" style="width:auto;padding:0;border:none"> Recebida (do fornecedor)
+            </label>
+          </div>
+        </div>
+
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+          <div class="upload-icon">📄</div>
+          <div class="upload-text">Arrasta o PDF ou clica para selecionar</div>
+          <div class="upload-sub">Apenas ficheiros PDF</div>
+        </div>
+        <input type="file" id="file-input" accept=".pdf" onchange="handleFile(this.files[0])">
+
+        <div class="loading" id="loading-extract">
+          <div class="spinner"></div>
+          A extrair dados da fatura com IA...
+        </div>
+      </div>
+
+      <div class="extracted-box" id="extracted-box">
+        <div class="extracted-header">
+          ✓ Dados extraídos — confirma antes de guardar
+        </div>
+        <div class="form-grid" id="form-fields">
+          <div class="form-group"><label>Número da Fatura</label><input id="f-numero" type="text"></div>
+          <div class="form-group"><label>Entidade</label><input id="f-entidade" type="text"></div>
+          <div class="form-group"><label>NIF</label><input id="f-nif" type="text"></div>
+          <div class="form-group"><label>Estado</label>
+            <select id="f-estado">
+              <option>Pendente</option>
+              <option>Pago</option>
+              <option>Vencido</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Data de Emissão</label><input id="f-emissao" type="text" placeholder="DD/MM/AAAA"></div>
+          <div class="form-group"><label>Data de Vencimento</label><input id="f-vencimento" type="text" placeholder="DD/MM/AAAA"></div>
+          <div class="form-group"><label>Base Tributável (€)</label><input id="f-base" type="text"></div>
+          <div class="form-group"><label>IVA (€)</label><input id="f-iva" type="text"></div>
+          <div class="form-group"><label>Total (€)</label><input id="f-total" type="text"></div>
+          <div class="form-group"><label>Data de Pagamento</label><input id="f-datapag" type="text" placeholder="DD/MM/AAAA (se já pago)"></div>
+          <div class="form-group full"><label>Notas</label><textarea id="f-notas"></textarea></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-primary" onclick="saveInvoice()">Guardar Fatura</button>
+          <button class="btn btn-ghost" onclick="resetForm()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Manual entry fallback -->
+      <div id="manual-entry" style="display:none">
+        <div class="card">
+          <div class="section-title-sm" style="margin-bottom:16px">Introdução Manual</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Número da Fatura</label><input id="m-numero" type="text"></div>
+            <div class="form-group"><label>Entidade</label><input id="m-entidade" type="text"></div>
+            <div class="form-group"><label>NIF</label><input id="m-nif" type="text"></div>
+            <div class="form-group"><label>Estado</label>
+              <select id="m-estado"><option>Pendente</option><option>Pago</option><option>Vencido</option></select>
+            </div>
+            <div class="form-group"><label>Data de Emissão</label><input id="m-emissao" type="text" placeholder="DD/MM/AAAA"></div>
+            <div class="form-group"><label>Data de Vencimento</label><input id="m-vencimento" type="text" placeholder="DD/MM/AAAA"></div>
+            <div class="form-group"><label>Base Tributável (€)</label><input id="m-base" type="text"></div>
+            <div class="form-group"><label>IVA (€)</label><input id="m-iva" type="text"></div>
+            <div class="form-group"><label>Total (€)</label><input id="m-total" type="text"></div>
+            <div class="form-group"><label>Data de Pagamento</label><input id="m-datapag" type="text" placeholder="DD/MM/AAAA"></div>
+            <div class="form-group full"><label>Notas</label><textarea id="m-notas"></textarea></div>
+          </div>
+          <div style="margin-top:16px">
+            <button class="btn btn-primary" onclick="saveManual()">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="toggleManual()">✏️ Introduzir manualmente</button>
+    </div>
+
+    <!-- LISTA -->
+    <div id="page-lista" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Todas as Faturas</div>
+          <div class="page-sub" id="lista-count">0 faturas</div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <select class="filter-select" id="filter-tipo" onchange="renderList()">
+          <option value="">Todos os tipos</option>
+          <option value="Emitida">Emitidas</option>
+          <option value="Recebida">Recebidas</option>
+        </select>
+        <select class="filter-select" id="filter-estado" onchange="renderList()">
+          <option value="">Todos os estados</option>
+          <option value="Pendente">Pendente</option>
+          <option value="Pago">Pago</option>
+          <option value="Vencido">Vencido</option>
+        </select>
+        <input class="filter-input" id="filter-search" type="text" placeholder="Pesquisar entidade..." oninput="renderList()">
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Nº Fatura</th>
+                <th>Entidade</th>
+                <th>NIF</th>
+                <th>Emissão</th>
+                <th>Vencimento</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+        <div id="list-empty" class="empty" style="display:none">
+          <div class="empty-icon">🗂️</div>
+          <h3>Sem faturas</h3>
+          <p>Adiciona a primeira fatura para começar.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div id="page-config" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Configuração</div>
+          <div class="page-sub">Chaves de API e preferências</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="settings-section">
+          <h3>Anthropic API Key</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Necessária para extração automática de dados dos PDFs. Obtém em <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></p>
+          <div style="display:flex;gap:10px">
+            <input type="password" id="cfg-apikey" placeholder="sk-ant-..." style="flex:1;max-width:420px">
+            <button class="btn btn-primary" onclick="saveConfig()">Guardar</button>
+          </div>
+          <div id="cfg-status" style="font-size:12px;margin-top:8px;color:var(--text-muted)"></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Dados</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">As faturas são guardadas localmente no teu browser (localStorage).</p>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇ Exportar CSV</button>
+            <button class="btn btn-danger btn-sm" onclick="clearData()">🗑 Apagar tudo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal: marcar como pago -->
+<div class="modal-overlay" id="modal-pagar">
+  <div class="modal">
+    <div class="modal-title">Marcar como Pago</div>
+    <div class="form-group">
+      <label>Data de Pagamento</label>
+      <input type="text" id="modal-datapag" placeholder="DD/MM/AAAA">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmPagar()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let invoices = JSON.parse(localStorage.getItem('faturas_data') || '[]');
+let config = JSON.parse(localStorage.getItem('faturas_config') || '{}');
+let currentModalId = null;
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const items = document.querySelectorAll('.nav-item');
+  const map = { dashboard: 0, nova: 1, lista: 2, config: 3 };
+  if (map[name] !== undefined) items[map[name]]?.classList.add('active');
+
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'lista') renderList();
+  if (name === 'config') loadConfig();
+}
+
+// ─── Storage ─────────────────────────────────────────────────────────────────
+function save() { localStorage.setItem('faturas_data', JSON.stringify(invoices)); }
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ─── Formatting ──────────────────────────────────────────────────────────────
+function fmt(val) {
+  const n = parseFloat(String(val).replace(',', '.')) || 0;
+  return n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+function toNum(val) { return parseFloat(String(val).replace(',', '.')) || 0; }
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const emitidas = invoices.filter(i => i.tipo === 'Emitida');
+  const recebidas = invoices.filter(i => i.tipo === 'Recebida');
+
+  const aReceber = emitidas.filter(i => i.estado === 'Pendente').reduce((s, i) => s + toNum(i.total), 0);
+  const aPagar = recebidas.filter(i => i.estado === 'Pendente').reduce((s, i) => s + toNum(i.total), 0);
+  const recebido = emitidas.filter(i => i.estado === 'Pago').reduce((s, i) => s + toNum(i.total), 0);
+  const pago = recebidas.filter(i => i.estado === 'Pago').reduce((s, i) => s + toNum(i.total), 0);
+
+  document.getElementById('m-receber').textContent = fmt(aReceber);
+  document.getElementById('m-pagar').textContent = fmt(aPagar);
+  document.getElementById('m-recebido').textContent = fmt(recebido);
+  document.getElementById('m-pago').textContent = fmt(pago);
+
+  document.getElementById('m-receber-n').textContent = emitidas.filter(i => i.estado === 'Pendente').length + ' pendentes';
+  document.getElementById('m-pagar-n').textContent = recebidas.filter(i => i.estado === 'Pendente').length + ' pendentes';
+  document.getElementById('m-recebido-n').textContent = emitidas.filter(i => i.estado === 'Pago').length + ' pagas';
+  document.getElementById('m-pago-n').textContent = recebidas.filter(i => i.estado === 'Pago').length + ' pagas';
+
+  // Recent
+  const recent = [...invoices].reverse().slice(0, 5);
+  const recentEl = document.getElementById('dash-recent');
+  if (recent.length === 0) {
+    recentEl.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Sem faturas ainda.</p>';
+  } else {
+    recentEl.innerHTML = recent.map(i => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:500">${i.entidade || '—'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${i.numero || ''} · ${i.tipo}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--mono);font-size:12px">${fmt(i.total)}</div>
+          <span class="badge badge-${i.estado.toLowerCase()}">${i.estado}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Upcoming due
+  const today = new Date();
+  const upcoming = invoices
+    .filter(i => i.estado === 'Pendente' && i.vencimento)
+    .map(i => ({ ...i, _date: parseDate(i.vencimento) }))
+    .filter(i => i._date && i._date >= today)
+    .sort((a, b) => a._date - b._date)
+    .slice(0, 5);
+
+  const vencEl = document.getElementById('dash-vencimentos');
+  if (upcoming.length === 0) {
+    vencEl.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Sem vencimentos próximos.</p>';
+  } else {
+    vencEl.innerHTML = upcoming.map(i => {
+      const diff = Math.ceil((i._date - today) / 86400000);
+      const urgency = diff <= 7 ? 'color:var(--red)' : diff <= 14 ? 'color:var(--amber)' : 'color:var(--text-muted)';
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:500">${i.entidade || '—'}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${i.vencimento}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:var(--mono);font-size:12px">${fmt(i.total)}</div>
+            <div style="font-size:11px;${urgency}">em ${diff} dia${diff !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const [d, m, y] = str.split('/');
+  if (!d || !m || !y) return null;
+  return new Date(+y, +m - 1, +d);
+}
+
+// ─── List ─────────────────────────────────────────────────────────────────────
+function renderList() {
+  const tipo = document.getElementById('filter-tipo')?.value || '';
+  const estado = document.getElementById('filter-estado')?.value || '';
+  const search = (document.getElementById('filter-search')?.value || '').toLowerCase();
+
+  let filtered = invoices.filter(i => {
+    if (tipo && i.tipo !== tipo) return false;
+    if (estado && i.estado !== estado) return false;
+    if (search && !i.entidade?.toLowerCase().includes(search) && !i.numero?.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('lista-count').textContent = filtered.length + ' fatura' + (filtered.length !== 1 ? 's' : '');
+
+  const tbody = document.getElementById('table-body');
+  const empty = document.getElementById('list-empty');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map((inv, idx) => {
+    const realIdx = invoices.indexOf(inv);
+    return `
+    <tr>
+      <td><span class="badge badge-${inv.tipo.toLowerCase()}">${inv.tipo}</span></td>
+      <td class="mono">${inv.numero || '—'}</td>
+      <td><strong style="font-weight:500">${inv.entidade || '—'}</strong></td>
+      <td class="mono" style="color:var(--text-muted)">${inv.nif || '—'}</td>
+      <td style="color:var(--text-muted)">${inv.emissao || '—'}</td>
+      <td style="color:var(--text-muted)">${inv.vencimento || '—'}</td>
+      <td class="mono"><strong>${fmt(inv.total)}</strong></td>
+      <td><span class="badge badge-${inv.estado.toLowerCase()}">${inv.estado}</span></td>
+      <td>
+        <div style="display:flex;gap:4px">
+          ${inv.estado !== 'Pago' ? `<button class="icon-btn" title="Marcar como pago" onclick="openModal(${realIdx})">✓</button>` : ''}
+          <button class="icon-btn" title="Apagar" onclick="deleteInvoice(${realIdx})">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Upload & Extract ─────────────────────────────────────────────────────────
+function dragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag'); }
+function dragLeave() { document.getElementById('upload-zone').classList.remove('drag'); }
+function dropFile(e) {
+  e.preventDefault();
+  dragLeave();
+  const f = e.dataTransfer.files[0];
+  if (f?.type === 'application/pdf') handleFile(f);
+  else toast('Apenas ficheiros PDF', 'error');
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  const apiKey = config.apiKey;
+  if (!apiKey) {
+    toast('Configura a API Key primeiro em Configuração', 'error');
+    return;
+  }
+
+  document.getElementById('loading-extract').classList.add('show');
+  document.getElementById('extracted-box').classList.remove('show');
+
+  try {
+    const b64 = await fileToBase64(file);
+    const data = await extractWithClaude(b64, apiKey);
+    fillForm(data);
+    document.getElementById('extracted-box').classList.add('show');
+    document.getElementById('loading-extract').classList.remove('show');
+  } catch (err) {
+    document.getElementById('loading-extract').classList.remove('show');
+    toast('Erro na extração: ' + err.message, 'error');
+    console.error(err);
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Leitura falhou'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function extractWithClaude(b64, apiKey) {
+  const prompt = `Analisa esta fatura e extrai os campos em JSON.
+Responde APENAS com JSON válido, sem markdown, sem texto extra.
+
+{
+  "numero": "número da fatura",
+  "entidade": "nome do cliente ou fornecedor",
+  "nif": "NIF/NIPC só dígitos",
+  "emissao": "DD/MM/AAAA",
+  "vencimento": "DD/MM/AAAA ou vazio",
+  "base": "valor numérico sem símbolo de moeda",
+  "iva": "valor numérico do IVA",
+  "total": "valor total numérico"
+}
+
+Campos sem informação ficam com string vazia.`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json();
+    throw new Error(err.error?.message || 'Erro na API');
+  }
+
+  const result = await resp.json();
+  const text = result.content[0].text.trim().replace(/```json|```/g, '').trim();
+  return JSON.parse(text);
+}
+
+function fillForm(data) {
+  document.getElementById('f-numero').value = data.numero || '';
+  document.getElementById('f-entidade').value = data.entidade || '';
+  document.getElementById('f-nif').value = data.nif || '';
+  document.getElementById('f-emissao').value = data.emissao || '';
+  document.getElementById('f-vencimento').value = data.vencimento || '';
+  document.getElementById('f-base').value = data.base || '';
+  document.getElementById('f-iva').value = data.iva || '';
+  document.getElementById('f-total').value = data.total || '';
+}
+
+function saveInvoice() {
+  const tipo = document.querySelector('input[name="tipo"]:checked').value;
+  const inv = {
+    id: Date.now(),
+    tipo,
+    numero: document.getElementById('f-numero').value,
+    entidade: document.getElementById('f-entidade').value,
+    nif: document.getElementById('f-nif').value,
+    emissao: document.getElementById('f-emissao').value,
+    vencimento: document.getElementById('f-vencimento').value,
+    base: document.getElementById('f-base').value,
+    iva: document.getElementById('f-iva').value,
+    total: document.getElementById('f-total').value,
+    estado: document.getElementById('f-estado').value,
+    dataPagamento: document.getElementById('f-datapag').value,
+    notas: document.getElementById('f-notas').value,
+  };
+  invoices.push(inv);
+  save();
+  toast('Fatura guardada com sucesso!');
+  resetForm();
+  showPage('lista');
+}
+
+function saveManual() {
+  const tipo = document.querySelector('input[name="tipo"]:checked').value;
+  const inv = {
+    id: Date.now(),
+    tipo,
+    numero: document.getElementById('m-numero').value,
+    entidade: document.getElementById('m-entidade').value,
+    nif: document.getElementById('m-nif').value,
+    emissao: document.getElementById('m-emissao').value,
+    vencimento: document.getElementById('m-vencimento').value,
+    base: document.getElementById('m-base').value,
+    iva: document.getElementById('m-iva').value,
+    total: document.getElementById('m-total').value,
+    estado: document.getElementById('m-estado').value,
+    dataPagamento: document.getElementById('m-datapag').value,
+    notas: document.getElementById('m-notas').value,
+  };
+  invoices.push(inv);
+  save();
+  toast('Fatura guardada!');
+  showPage('lista');
+}
+
+function resetForm() {
+  document.getElementById('extracted-box').classList.remove('show');
+  document.getElementById('file-input').value = '';
+}
+
+function toggleManual() {
+  const el = document.getElementById('manual-entry');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ─── Modal (marcar como pago) ─────────────────────────────────────────────────
+function openModal(idx) {
+  currentModalId = idx;
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2, '0');
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const yyyy = today.getFullYear();
+  document.getElementById('modal-datapag').value = `${dd}/${mm}/${yyyy}`;
+  document.getElementById('modal-pagar').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal-pagar').classList.remove('show');
+  currentModalId = null;
+}
+
+function confirmPagar() {
+  if (currentModalId === null) return;
+  invoices[currentModalId].estado = 'Pago';
+  invoices[currentModalId].dataPagamento = document.getElementById('modal-datapag').value;
+  save();
+  closeModal();
+  renderList();
+  toast('Marcado como pago!');
+}
+
+function deleteInvoice(idx) {
+  if (!confirm('Apagar esta fatura?')) return;
+  invoices.splice(idx, 1);
+  save();
+  renderList();
+  toast('Fatura apagada');
+}
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+function loadConfig() {
+  if (config.apiKey) {
+    document.getElementById('cfg-apikey').value = config.apiKey;
+    document.getElementById('cfg-status').textContent = '✓ API Key configurada';
+  }
+}
+
+function saveConfig() {
+  config.apiKey = document.getElementById('cfg-apikey').value.trim();
+  localStorage.setItem('faturas_config', JSON.stringify(config));
+  document.getElementById('cfg-status').textContent = '✓ Guardado';
+  toast('Configuração guardada!');
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+function exportData() {
+  const headers = ['Tipo','Número','Entidade','NIF','Emissão','Vencimento','Base','IVA','Total','Estado','Data Pagamento','Notas'];
+  const rows = invoices.map(i => [
+    i.tipo, i.numero, i.entidade, i.nif, i.emissao, i.vencimento,
+    i.base, i.iva, i.total, i.estado, i.dataPagamento, i.notas
+  ].map(v => `"${(v||'').replace(/"/g,'""')}"`).join(','));
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'faturas.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function clearData() {
+  if (!confirm('Apagar TODAS as faturas? Esta ação não pode ser desfeita.')) return;
+  invoices = [];
+  save();
+  toast('Dados apagados');
+  renderDashboard();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+renderDashboard();
+</script>
+</body>
+</html>
+HTMLEOF

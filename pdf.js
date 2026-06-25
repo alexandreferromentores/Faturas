@@ -99,9 +99,9 @@ function parseReciboVerde(text) {
       : '';
 
   // ── Descritivo ──────────────────────────────────────────────────────────────
-  // Aparece depois de "TAXA IVA" e antes de "OUT -" ou similar
-  // Formato: "TAXA IVA OUT - UFCD4552-Forestecort Serviço Serviços de formação (...)"
-  const descMatch = text.match(/TAXA\s+IVA\s+([\w\s\-,.()\u00C0-\u024F]{10,200?}?)\s+(?:S\/IVA|C\/IVA|\d+,\d{2}\s*€)/i);
+  // Formato: "TAXA IVA OUT - UFCD4552... Serviço Serviços de formação (...) 1 Unidade"
+  // Captura tudo entre "TAXA IVA" e "1 Unidade" (ou número de quantidade)
+  const descMatch = text.match(/TAXA\s+IVA\s+([\s\S]+?)\s+\d+\s+Unidade/i);
   const descritivo = descMatch ? descMatch[1].replace(/\s+/g, ' ').trim() : '';
 
   // ── Helper: extrai valor monetário após label ────────────────────────────────

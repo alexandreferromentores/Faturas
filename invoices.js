@@ -1,5 +1,5 @@
 // ─── invoices.js ──────────────────────────────────────────────────────────────
-// Lógica de faturas: criar, editar, apagar e workflow de estados.
+// Lógica de faturas: criar, editar, apagar, validar e workflow de estados.
 
 // ─── Construtor de fatura ─────────────────────────────────────────────────────
 function buildInv(fields) {
@@ -9,6 +9,20 @@ function buildInv(fields) {
     ...fields,
     pastaId: fields.pastaId ? Number(fields.pastaId) : null,
   };
+}
+
+// ─── Validação ────────────────────────────────────────────────────────────────
+function validateInv(fields) {
+  const erros = [];
+  if (!fields.entidade?.trim()) erros.push('Entidade');
+  if (!fields.numero?.trim())   erros.push('Número de fatura');
+  if (!fields.emissao?.trim())  erros.push('Data de emissão');
+  if (!fields.total?.toString().trim()) erros.push('Total');
+  if (erros.length) {
+    toast('Campos obrigatórios: ' + erros.join(', '), 'error');
+    return false;
+  }
+  return true;
 }
 
 // ─── Apagar fatura ────────────────────────────────────────────────────────────
@@ -38,15 +52,19 @@ function openManual(tipo, editIdx) {
     document.getElementById('m-num').value      = inv.numero     || '';
     document.getElementById('m-emissao').value  = inv.emissao    || '';
     document.getElementById('m-venc').value     = inv.vencimento || '';
+    document.getElementById('m-desc').value     = inv.descritivo || '';
     document.getElementById('m-base').value     = inv.base       || '';
     document.getElementById('m-iva').value      = inv.iva        || '';
+    document.getElementById('m-retencao').value = inv.retencao   || '';
+    document.getElementById('m-totalDoc').value = inv.totalDoc   || '';
     document.getElementById('m-total').value    = inv.total      || '';
     document.getElementById('m-estado').value   = inv.estado     || 'pendente';
     document.getElementById('m-pasta').value    = inv.pastaId    || '';
     document.getElementById('m-notas').value    = inv.notas      || '';
   } else {
     document.getElementById('m-edit-id').value = '';
-    ['m-ent','m-nif','m-num','m-emissao','m-venc','m-base','m-iva','m-total','m-notas']
+    ['m-ent','m-nif','m-num','m-emissao','m-venc','m-desc',
+     'm-base','m-iva','m-retencao','m-totalDoc','m-total','m-notas']
       .forEach(id => document.getElementById(id).value = '');
     document.getElementById('m-estado').value = 'pendente';
     document.getElementById('m-pasta').value  = '';
@@ -67,8 +85,11 @@ function saveManual() {
     numero:     document.getElementById('m-num').value,
     emissao:    document.getElementById('m-emissao').value,
     vencimento: document.getElementById('m-venc').value,
+    descritivo: document.getElementById('m-desc').value,
     base:       document.getElementById('m-base').value,
     iva:        document.getElementById('m-iva').value,
+    retencao:   document.getElementById('m-retencao').value,
+    totalDoc:   document.getElementById('m-totalDoc').value,
     total:      document.getElementById('m-total').value,
     estado:     document.getElementById('m-estado').value,
     pastaId:    document.getElementById('m-pasta').value
@@ -76,13 +97,12 @@ function saveManual() {
     notas:      document.getElementById('m-notas').value,
   };
 
-  if (!fields.entidade.trim()) { toast('Preenche a entidade', 'error'); return; }
+  if (!validateInv(fields)) return;
 
   if (editIdxRaw !== '') {
     invoices[parseInt(editIdxRaw)] = { ...invoices[parseInt(editIdxRaw)], ...fields };
     toast('Fatura atualizada!', 'success');
   } else {
-    // Verificação de duplicado
     const num = fields.numero.trim().toLowerCase();
     const ent = fields.entidade.trim().toLowerCase();
     const dup = num && invoices.find(i =>
@@ -96,6 +116,37 @@ function saveManual() {
   save();
   closeModal('modal-manual');
   nav(tipo === 'cliente' ? 'clientes' : 'fornecedores');
+}
+
+// ─── Detalhe de fatura ────────────────────────────────────────────────────────
+function viewInv(idx) {
+  const inv = invoices[idx];
+  const p   = getPasta(inv.pastaId);
+  document.getElementById('detail-title').textContent = inv.entidade || '—';
+  document.getElementById('detail-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label>Número</label><div style="font-family:var(--mono);font-size:13px;padding:8px 0">${inv.numero || '—'}</div></div>
+      <div class="form-group"><label>Tipo</label><div style="padding:8px 0">${isClient(inv) ? '👤 Cliente' : '🏢 Fornecedor'}</div></div>
+      <div class="form-group"><label>NIF</label><div style="font-family:var(--mono);font-size:13px;padding:8px 0">${inv.nif || '—'}</div></div>
+      <div class="form-group"><label>Estado</label><div style="padding:8px 0">${estadoBadge(inv)} ${dueBadge(inv)}</div></div>
+      <div class="form-group"><label>Data de Emissão</label><div style="padding:8px 0">${inv.emissao || '—'}</div></div>
+      <div class="form-group"><label>Data de Vencimento</label><div style="padding:8px 0">${inv.vencimento || '—'}</div></div>
+      ${inv.descritivo ? `<div class="form-group full"><label>Descritivo</label><div style="padding:8px 0;font-size:13px;color:var(--text)">${inv.descritivo}</div></div>` : ''}
+      <div class="form-group"><label>Valor Ilíquido</label><div style="font-family:var(--mono);padding:8px 0">${inv.base ? fmt(inv.base) : '—'}</div></div>
+      <div class="form-group"><label>IVA</label><div style="font-family:var(--mono);padding:8px 0">${inv.iva ? fmt(inv.iva) : '—'}</div></div>
+      ${inv.retencao ? `<div class="form-group"><label>Retenção IRS</label><div style="font-family:var(--mono);padding:8px 0">${fmt(inv.retencao)}</div></div>` : ''}
+      ${inv.totalDoc ? `<div class="form-group"><label>Total Documento</label><div style="font-family:var(--mono);padding:8px 0">${fmt(inv.totalDoc)}</div></div>` : ''}
+      <div class="form-group"><label>Total a Pagar</label><div style="font-family:var(--mono);font-size:16px;font-weight:600;color:var(--accent);padding:8px 0">${fmt(inv.total)}</div></div>
+      ${p ? `<div class="form-group"><label>Pasta</label><div style="padding:8px 0"><span class="folder-chip" style="background:${p.cor.bg};color:${p.cor.text};border-color:${p.cor.border}">${p.icon} ${p.nome}</span></div></div>` : ''}
+      ${inv.notas ? `<div class="form-group full"><label>Notas</label><div style="padding:8px 0;font-size:13px;color:var(--muted)">${inv.notas}</div></div>` : ''}
+      ${inv.dataPagamento ? `<div class="form-group"><label>Data de Pagamento</label><div style="padding:8px 0">${inv.dataPagamento}</div></div>` : ''}
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <button class="btn btn-primary btn-sm" onclick="closeModal('modal-detail');openWF(${idx})">⇄ Alterar Estado</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-detail');editInv(${idx})">✎ Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="closeModal('modal-detail');delInv(${idx})">✕ Apagar</button>
+    </div>`;
+  document.getElementById('modal-detail').classList.add('show');
 }
 
 // ─── Pastas ───────────────────────────────────────────────────────────────────

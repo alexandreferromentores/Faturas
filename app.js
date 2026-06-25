@@ -339,13 +339,20 @@ function dragLeave()  { document.getElementById('upload-zone').classList.remove(
 function dropFile(e)  { e.preventDefault(); dragLeave(); const f = e.dataTransfer.files[0]; if (f?.type === 'application/pdf') handleFile(f); else toast('Apenas PDF', 'error'); }
 
 async function handleFile(file) {
-  if (!config.apiKey) { toast('Configura a API Key primeiro', 'error'); return; }
   document.getElementById('loading-ext').classList.add('show');
   document.getElementById('extracted-box').style.display = 'none';
   document.getElementById('dup-warn').style.display = 'none';
   try {
-    const b64  = await toBase64(file);
-    const data = await extractPDF(b64, config.apiKey);
+    const text = await readPDFText(file);
+    let data = parseReciboVerde(text);
+
+    // Se o parser local não extraiu o essencial E há API key, tenta com IA
+    if (!data.entidade && !data.numero && config.apiKey) {
+      const b64 = btoa(text); // fallback: não é ideal mas evita segundo readFile
+      const b64real = await toBase64(file);
+      data = await extractPDFApi(b64real, config.apiKey);
+    }
+
     fillExtracted(data);
     checkDuplicate(data);
     document.getElementById('extracted-box').style.display = 'block';
@@ -353,6 +360,90 @@ async function handleFile(file) {
     toast('Erro na extração: ' + e.message, 'error');
   }
   document.getElementById('loading-ext').classList.remove('show');
+}
+
+// ─── Parser local: Recibo Verde (AT) ─────────────────────────────────────────
+// Funciona com Fatura-Recibo emitida pelo Portal das Finanças.
+// Extrai campos por padrões de texto fixos do layout da AT.
+function parseReciboVerde(text) {
+  const get = (pattern, flags = 'i') => {
+    const m = text.match(new RegExp(pattern, flags));
+    return m ? m[1].trim() : '';
+  };
+
+  // Número da fatura: "FR ATSIRE01FR/22" dentro de <FR ...> ou <...>
+  const numMatch = text.match(/<([^>]+)>/);
+  const numero = numMatch ? numMatch[1].trim() : '';
+
+  // Data de emissão: "emitida em DD/MM/AAAA"
+  const emissao = get('emitida em (\\d{2}/\\d{2}/\\d{4})');
+
+  // Prestador (fornecedor): linha depois de "NOME" na secção do transmitente.
+  // O layout da AT tem: "NOME  [nome]\nDOMICÍLIO ..."
+  const prestadorMatch = text.match(/DADOS DO TRANSMITENTE[\s\S]*?NOME\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][^\n]+)/i);
+  const entidade = prestadorMatch ? prestadorMatch[1].trim() : '';
+
+  // NIF do prestador: linha "NÚMERO DE IDENTIFICAÇÃO FISCAL (NIF) - XXXXXXXXX"
+  const nifMatch = text.match(/NIF\s*[\-–]\s*(\d{9})/i);
+  const nif = nifMatch ? nifMatch[1] : '';
+
+  // Valores — formato "500,00 €" ou "500,00€"
+  const parseVal = label => {
+    const m = text.match(new RegExp(label + '[\\s\\S]*?([\\d.,]+)\\s*€', 'i'));
+    if (!m) return '';
+    return m[1].replace(/\./g, '').replace(',', '.');
+  };
+
+  const base  = parseVal('Valor il[ií]quido');
+  const iva   = parseVal('IVA\\s*\\n');
+
+  // Total a pagar (após retenção IRS) — campo mais relevante para este tipo
+  const totalPagarMatch = text.match(/TOTAL A PAGAR\s+([\d.,]+)\s*€/i);
+  const totalDocMatch   = text.match(/TOTAL DO DOCUMENTO\s+([\d.,]+)\s*€/i);
+  const total = totalPagarMatch
+    ? totalPagarMatch[1].replace(/\./g, '').replace(',', '.')
+    : totalDocMatch
+      ? totalDocMatch[1].replace(/\./g, '').replace(',', '.')
+      : '';
+
+  // IVA — valor direto da linha de totais
+  const ivaMatch = text.match(/\bIVA\b\s+([\d.,]+)\s*€/i);
+  const ivaVal = ivaMatch ? ivaMatch[1].replace(/\./g, '').replace(',', '.') : '';
+
+  return { numero, entidade, nif, emissao, vencimento: '', base, iva: ivaVal || iva, total };
+}
+
+// ─── Leitura de texto do PDF (sem biblioteca externa) ─────────────────────────
+// Usa a API FileReader para ler o PDF como texto.
+// Funciona para PDFs digitais (não scaneados).
+function readPDFText(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      // Extrai texto legível do PDF binário usando regex simples
+      const raw = e.target.result;
+      // Converte ArrayBuffer para string
+      const bytes = new Uint8Array(raw);
+      let str = '';
+      for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+      // Extrai sequências de texto entre parênteses (formato PDF)
+      const chunks = [];
+      const re = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g;
+      let m;
+      while ((m = re.exec(str)) !== null) {
+        const t = m[1]
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '\r')
+          .replace(/\\t/g, '\t')
+          .replace(/\\\\/g, '\\')
+          .replace(/\\([^nrt\\()])/g, '$1');
+        if (t.trim().length > 0) chunks.push(t);
+      }
+      res(chunks.join('\n'));
+    };
+    reader.onerror = rej;
+    reader.readAsArrayBuffer(file);
+  });
 }
 
 function toBase64(file) {
@@ -364,7 +455,8 @@ function toBase64(file) {
   });
 }
 
-async function extractPDF(b64, apiKey) {
+// ─── Extração via API (fallback para outros tipos de fatura) ──────────────────
+async function extractPDFApi(b64, apiKey) {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {

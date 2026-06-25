@@ -1,6 +1,24 @@
 // ─── render.js ────────────────────────────────────────────────────────────────
 // Todas as funções que constroem e actualizam o HTML das páginas.
 
+// ─── Helper: filtro por período MM/AAAA ──────────────────────────────────────
+function inPeriod(emissao, de, ate) {
+  if (!de && !ate) return true;
+  if (!emissao) return false;
+  const parts = emissao.split('/');
+  if (parts.length < 3) return false;
+  const invKey = parts[2] + '-' + parts[1]; // AAAA-MM
+  const toKey = s => {
+    const p = s.trim().split('/');
+    return p.length === 2 ? p[1] + '-' + p[0].padStart(2,'0') : null;
+  };
+  const deKey  = de  ? toKey(de)  : null;
+  const ateKey = ate ? toKey(ate) : null;
+  if (deKey  && invKey < deKey)  return false;
+  if (ateKey && invKey > ateKey) return false;
+  return true;
+}
+
 let chartMensal = null;
 let chartPasstas = null;
 
@@ -227,6 +245,8 @@ function renderForn() {
   const pasta  = document.getElementById('ff-pasta')?.value  || '';
   const search = (document.getElementById('ff-search')?.value || '').toLowerCase();
 
+  const de  = document.getElementById('ff-de')?.value  || '';
+  const ate = document.getElementById('ff-ate')?.value || '';
   let data = invoices.filter(i => !isClient(i));
   if (estado === 'vencido') data = data.filter(isOverdue);
   else if (estado)          data = data.filter(i => i.estado === estado);
@@ -234,6 +254,7 @@ function renderForn() {
   if (search) data = data.filter(i =>
     (i.entidade || '').toLowerCase().includes(search) ||
     (i.numero   || '').toLowerCase().includes(search));
+  data = data.filter(i => inPeriod(i.emissao, de, ate));
 
   document.getElementById('forn-count').textContent = data.length + ' fatura' + (data.length !== 1 ? 's' : '');
   const body  = document.getElementById('forn-body');
@@ -259,6 +280,7 @@ function renderForn() {
         <td class="mono"><strong>${fmt(inv.total)}</strong></td>
         <td>${pChip}</td>
         <td><div style="display:flex;gap:3px">
+          <button class="icon-btn" title="Ver"    onclick="viewInv(${ri})">👁</button>
           <button class="icon-btn" title="Estado" onclick="openWF(${ri})">⇄</button>
           <button class="icon-btn" title="Editar"  onclick="editInv(${ri})">✎</button>
           <button class="icon-btn" title="Apagar"  onclick="delInv(${ri})">✕</button>
@@ -273,6 +295,8 @@ function renderCli() {
   const pasta  = document.getElementById('cf-pasta')?.value  || '';
   const search = (document.getElementById('cf-search')?.value || '').toLowerCase();
 
+  const de  = document.getElementById('cf-de')?.value  || '';
+  const ate = document.getElementById('cf-ate')?.value || '';
   let data = invoices.filter(isClient);
   if (estado === 'vencido')       data = data.filter(isOverdue);
   else if (estado === 'recebido') data = data.filter(i => i.estado === 'pago');
@@ -281,6 +305,7 @@ function renderCli() {
   if (search) data = data.filter(i =>
     (i.entidade || '').toLowerCase().includes(search) ||
     (i.numero   || '').toLowerCase().includes(search));
+  data = data.filter(i => inPeriod(i.emissao, de, ate));
 
   document.getElementById('cli-count').textContent = data.length + ' fatura' + (data.length !== 1 ? 's' : '');
   const body  = document.getElementById('cli-body');
@@ -309,6 +334,7 @@ function renderCli() {
         <td class="mono"><strong>${fmt(inv.total)}</strong></td>
         <td>${pChip}</td>
         <td><div style="display:flex;gap:3px">
+          <button class="icon-btn" title="Ver"    onclick="viewInv(${ri})">👁</button>
           <button class="icon-btn" title="Estado" onclick="openWF(${ri})">⇄</button>
           <button class="icon-btn" title="Editar"  onclick="editInv(${ri})">✎</button>
           <button class="icon-btn" title="Apagar"  onclick="delInv(${ri})">✕</button>
@@ -393,3 +419,55 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDashboard();
   updateAlertBadge();
 });
+
+// ─── Pesquisa global ──────────────────────────────────────────────────────────
+function renderPesquisa() {
+  const texto  = (document.getElementById('pesq-texto')?.value  || '').toLowerCase();
+  const tipo   = document.getElementById('pesq-tipo')?.value    || '';
+  const estado = document.getElementById('pesq-estado')?.value  || '';
+  const de     = document.getElementById('pesq-de')?.value      || '';
+  const ate    = document.getElementById('pesq-ate')?.value     || '';
+
+  let data = [...invoices];
+  if (tipo === 'fornecedor') data = data.filter(i => !isClient(i));
+  if (tipo === 'cliente')    data = data.filter(i => isClient(i));
+  if (estado === 'vencido')  data = data.filter(isOverdue);
+  else if (estado)           data = data.filter(i => i.estado === estado);
+  if (texto) data = data.filter(i =>
+    (i.entidade   || '').toLowerCase().includes(texto) ||
+    (i.numero     || '').toLowerCase().includes(texto) ||
+    (i.descritivo || '').toLowerCase().includes(texto) ||
+    (i.nif        || '').toLowerCase().includes(texto));
+  data = data.filter(i => inPeriod(i.emissao, de, ate));
+
+  const body  = document.getElementById('pesq-body');
+  const empty = document.getElementById('pesq-empty');
+
+  if (data.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  body.innerHTML = data
+    .sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''))
+    .map(inv => {
+      const ri    = invoices.indexOf(inv);
+      const p     = getPasta(inv.pastaId);
+      const pChip = p
+        ? `<span class="folder-chip" style="background:${p.cor.bg};color:${p.cor.text};border-color:${p.cor.border}">${p.icon} ${p.nome}</span>`
+        : '<span style="color:var(--muted);font-size:12px">—</span>';
+      return `<tr>
+        <td><span class="badge ${isClient(inv) ? 'badge-cliente' : 'badge-fornecedor'}">${isClient(inv) ? 'Cliente' : 'Fornecedor'}</span></td>
+        <td>${estadoBadge(inv)} ${dueBadge(inv)}</td>
+        <td class="mono">${inv.numero || '—'}</td>
+        <td><strong style="font-weight:500">${inv.entidade || '—'}</strong></td>
+        <td style="color:var(--muted)">${inv.emissao || '—'}</td>
+        <td style="color:var(--muted)">${inv.vencimento || '—'}</td>
+        <td class="mono"><strong>${fmt(inv.total)}</strong></td>
+        <td>${pChip}</td>
+        <td><div style="display:flex;gap:3px">
+          <button class="icon-btn" title="Ver"    onclick="viewInv(${ri})">👁</button>
+          <button class="icon-btn" title="Estado" onclick="openWF(${ri})">⇄</button>
+          <button class="icon-btn" title="Apagar" onclick="delInv(${ri})">✕</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+}

@@ -236,7 +236,12 @@
             <div class="form-group"><label>Número da Fatura</label><input id="f-num" type="text"></div>
             <div class="form-group"><label>Entidade (Prestador)</label><input id="f-ent" type="text"></div>
             <div class="form-group"><label>NIF</label><input id="f-nif" type="text"></div>
-            <div class="form-group"><label>Pasta</label><select id="f-pasta"><option value="">Sem pasta</option></select></div>
+            <div class="form-group"><label>Pasta</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <select id="f-pasta" style="flex:1"><option value="">Sem pasta</option></select>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="openModalPastaInline('f-pasta')" title="Nova pasta" style="padding:7px 10px;flex-shrink:0">＋</button>
+              </div>
+            </div>
             <div class="form-group"><label>Data de Emissão</label><input id="f-emissao" type="text" placeholder="DD/MM/AAAA"></div>
             <div class="form-group"><label>Data de Vencimento</label><input id="f-venc" type="text" placeholder="DD/MM/AAAA"></div>
             <div class="form-group full"><label>Descritivo</label><input id="f-desc" type="text"></div>
@@ -394,7 +399,12 @@
       <div class="form-group"><label>Entidade</label><input id="m-ent" type="text"></div>
       <div class="form-group"><label>NIF</label><input id="m-nif" type="text"></div>
       <div class="form-group"><label>Número da Fatura</label><input id="m-num" type="text"></div>
-      <div class="form-group"><label>Pasta</label><select id="m-pasta"><option value="">Sem pasta</option></select></div>
+      <div class="form-group"><label>Pasta</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="m-pasta" style="flex:1"><option value="">Sem pasta</option></select>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openModalPastaInline('m-pasta')" title="Nova pasta" style="padding:7px 10px;flex-shrink:0">＋</button>
+        </div>
+      </div>
       <div class="form-group"><label>Data de Emissão</label><input id="m-emissao" type="text" placeholder="DD/MM/AAAA"></div>
       <div class="form-group"><label>Data de Vencimento</label><input id="m-venc" type="text" placeholder="DD/MM/AAAA"></div>
       <div class="form-group full"><label>Descritivo</label><input id="m-desc" type="text"></div>

@@ -2,6 +2,9 @@
 // Upload de PDF, parser local para Recibo Verde (AT) e fallback via API.
 // Usa PDF.js (Mozilla) para extracção de texto fiável.
 
+// PDF.js é carregado via CDN no index.html — não precisa de instalação.
+// Versão usada: 3.x (legacy build compatível com browsers modernos)
+
 // ─── Drag & drop ──────────────────────────────────────────────────────────────
 function dragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag'); }
 function dragLeave()  { document.getElementById('upload-zone').classList.remove('drag'); }
@@ -14,10 +17,18 @@ function dropFile(e) {
 }
 
 // ─── Entrada principal ────────────────────────────────────────────────────────
+// Guarda referência ao ficheiro PDF actual para preview
+let _currentPDFFile = null;
+
 async function handleFile(file) {
   document.getElementById('loading-ext').classList.add('show');
   document.getElementById('extracted-box').style.display = 'none';
   document.getElementById('dup-warn').style.display = 'none';
+
+  // Mostra pré-visualização do PDF
+  _currentPDFFile = file;
+  showPdfPreview(file);
+
   try {
     const text = await readPDFText(file);
     let data = parseReciboVerde(text);
@@ -46,83 +57,54 @@ async function readPDFText(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    pages.push(content.items.map(item => item.str).join(' '));
+    // Junta os items de texto com espaço, preservando quebras de linha por bloco
+    const pageText = content.items.map(item => item.str).join(' ');
+    pages.push(pageText);
   }
-  return pages.join(' ');
+  return pages.join('\n');
 }
 
 // ─── Parser local: Recibo Verde (AT) ─────────────────────────────────────────
-// Baseado no layout real extraído do PDF.js.
-// O texto é uma linha contínua — os padrões reflectem isso.
+// Funciona com Fatura-Recibo emitida pelo Portal das Finanças.
+// Para adicionar suporte a outros tipos, cria uma função parseXxx(text)
+// e chama-a em handleFile antes do fallback para API.
 function parseReciboVerde(text) {
-
-  // ── Número da fatura ────────────────────────────────────────────────────────
-  // Formato: "<FR ATSIRE01FR/22>"
-  const numMatch = text.match(/<(FR\s+[^>]{2,40})>/i);
+  // Número: "FR ATSIRE01FR/22" dentro de < >
+  const numMatch = text.match(/<([^>]{3,40})>/);
   const numero   = numMatch ? numMatch[1].trim() : '';
 
-  // ── Data de emissão ─────────────────────────────────────────────────────────
+  // Data de emissão
   const emissaoMatch = text.match(/emitida em\s+(\d{2}\/\d{2}\/\d{4})/i);
   const emissao      = emissaoMatch ? emissaoMatch[1] : '';
 
-  // ── Data de vencimento: emissão + 60 dias ───────────────────────────────────
-  let vencimento = '';
-  if (emissao) {
-    const [d, m, y] = emissao.split('/').map(Number);
-    const dt = new Date(y, m - 1, d);
-    dt.setDate(dt.getDate() + 60);
-    vencimento = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
-  }
+  // Prestador: nome depois de "NOME" antes de "DOMICÍLIO"
+  const prestadorMatch = text.match(/NOME\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][^]+?)\s+DOM[IÍ]C[IÍ]LIO/i);
+  const entidade       = prestadorMatch ? prestadorMatch[1].replace(/\s+/g, ' ').trim() : '';
 
-  // ── NIF do prestador ────────────────────────────────────────────────────────
-  // O NIF do prestador aparece antes de "TRAVESSA" (morada do adquirente)
-  // Formato: "SBR 169277895 TRAVESSA"
-  const nifMatch = text.match(/\b(\d{9})\s+TRAVESSA/i);
+  // NIF do prestador
+  const nifMatch = text.match(/(?:NIF|FISCAL)\s*[)\-–:]\s*(\d{9})/i);
   const nif      = nifMatch ? nifMatch[1] : '';
 
-  // ── Prestador (fornecedor) ──────────────────────────────────────────────────
-  // O nome aparece depois da data de realização dos serviços e antes de "MENTORES"
-  // Formato: "29/11/2024  ANTONIO MANUEL BORGES DIAS PEREIRA DE JESUS  MENTORES"
-  const dataRealizacao = emissao; // normalmente igual à data de emissão
-  const prestMatch = text.match(
-    new RegExp(dataRealizacao.replace(/\//g, '\\/') +
-      '\\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ\\s]+?)\\s+(?:MENTORES|ASSOCIA)', 'i')
-  );
-  // Fallback: captura entre o NIF e "MENTORES"
-  const prestFallback = text.match(
-    /\b\d{9}\s+(?:TRAVESSA[^A-Z]*?)\s*([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ\s]+?)\s+(?:MENTORES|ASSOCIA)/i
-  );
-  const entidade = prestMatch
-    ? prestMatch[1].replace(/\s+/g, ' ').trim()
-    : prestFallback
-      ? prestFallback[1].replace(/\s+/g, ' ').trim()
-      : '';
-
-  // ── Descritivo ──────────────────────────────────────────────────────────────
-  // Formato: "TAXA IVA OUT - UFCD4552... Serviço Serviços de formação (...) 1 Unidade"
-  // Captura tudo entre "TAXA IVA" e "1 Unidade" (ou número de quantidade)
-  const descMatch = text.match(/TAXA\s+IVA\s+([\s\S]+?)\s+\d+\s+Unidade/i);
-  const descritivo = descMatch ? descMatch[1].replace(/\s+/g, ' ').trim() : '';
-
-  // ── Helper: extrai valor monetário após label ────────────────────────────────
-  const money = (pattern) => {
-    const m = text.match(new RegExp(pattern + '[^\\d]*([\\d]+[,.]\\d{2})', 'i'));
-    return m ? m[1].replace(/\./g, '').replace(',', '.') : '';
+  // Helper monetário: extrai o primeiro valor após o label
+  const money = pattern => {
+    const m = text.match(new RegExp(pattern + '[^\\d]*([\\d]+[.,][\\d]{2})', 'i'));
+    return m ? m[1].replace('.', '').replace(',', '.') : '';
   };
 
-  // ── Valores ─────────────────────────────────────────────────────────────────
-  const base     = money('Valor il[ií]quido');
-  // IVA: apanhar o valor depois de "IVA" mas antes de "Imposto do Selo"
-  const ivaMatch = text.match(/\bIVA\b\s+([\d]+[,.][\d]{2})\s*€\s*Imposto/i);
-  const iva      = ivaMatch ? ivaMatch[1].replace(',', '.') : money('\\bIVA\\b[^%\\d]{0,10}(?!\\d+\\s*%)');
-  const retencao = money('Reten[çc][aã]o na fonte IRS');
-  const totalDoc = money('TOTAL DO DOCUMENTO');
-  const total    = money('TOTAL A PAGAR') || totalDoc;
+  const base  = money('Valor il[ií]quido');
+  const iva   = money('\\bIVA\\b(?!\\s+\\d+\\s*%)(?:[^\\d]*\\d+[.,]\\d{2}[^\\d]*){0,3}');
+  const total = money('TOTAL A PAGAR') || money('TOTAL DO DOCUMENTO');
 
-  return { numero, entidade, nif, emissao, vencimento, descritivo, base, iva, retencao, totalDoc, total };
+  // IVA: tenta linha de totais directamente
+  const ivaTotsMatch = text.match(/\bIVA\b\s+([\d]+[.,][\d]{2})\s*€?/i);
+  const ivaFinal = ivaTotsMatch
+    ? ivaTotsMatch[1].replace('.', '').replace(',', '.')
+    : iva;
+
+  return { numero, entidade, nif, emissao, vencimento: '', base, iva: ivaFinal, total };
 }
 
-// ─── toBase64 ─────────────────────────────────────────────────────────────────
+// ─── toBase64 (para fallback API) ────────────────────────────────────────────
 function toBase64(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
@@ -147,7 +129,7 @@ async function extractPDFApi(b64, apiKey) {
       max_tokens: 1000,
       messages: [{ role: 'user', content: [
         { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
-        { type: 'text', text: 'Analisa esta fatura. Responde APENAS com JSON válido sem markdown:\n{"numero":"","entidade":"","nif":"","emissao":"DD/MM/AAAA","vencimento":"DD/MM/AAAA","descritivo":"","base":"valor numérico","iva":"valor numérico","retencao":"valor numérico","totalDoc":"valor numérico","total":"valor numérico"}' },
+        { type: 'text', text: 'Analisa esta fatura. Responde APENAS com JSON válido sem markdown:\n{"numero":"","entidade":"","nif":"","emissao":"DD/MM/AAAA","vencimento":"DD/MM/AAAA ou vazio","base":"valor numérico","iva":"valor numérico","total":"valor numérico"}' },
       ]}],
     }),
   });
@@ -158,18 +140,15 @@ async function extractPDFApi(b64, apiKey) {
 
 // ─── Preenche formulário ──────────────────────────────────────────────────────
 function fillExtracted(data) {
-  document.getElementById('f-num').value      = data.numero     || '';
-  document.getElementById('f-ent').value      = data.entidade   || '';
-  document.getElementById('f-nif').value      = data.nif        || '';
-  document.getElementById('f-emissao').value  = data.emissao    || '';
-  document.getElementById('f-venc').value     = data.vencimento || '';
-  document.getElementById('f-desc').value     = data.descritivo || '';
-  document.getElementById('f-base').value     = data.base       || '';
-  document.getElementById('f-iva').value      = data.iva        || '';
-  document.getElementById('f-retencao').value = data.retencao   || '';
-  document.getElementById('f-totalDoc').value = data.totalDoc   || '';
-  document.getElementById('f-total').value    = data.total      || '';
-  document.getElementById('f-estado').value   = 'pendente';
+  document.getElementById('f-num').value     = data.numero     || '';
+  document.getElementById('f-ent').value     = data.entidade   || '';
+  document.getElementById('f-nif').value     = data.nif        || '';
+  document.getElementById('f-emissao').value = data.emissao    || '';
+  document.getElementById('f-venc').value    = data.vencimento || '';
+  document.getElementById('f-base').value    = data.base       || '';
+  document.getElementById('f-iva').value     = data.iva        || '';
+  document.getElementById('f-total').value   = data.total      || '';
+  document.getElementById('f-estado').value  = 'pendente';
 }
 
 // ─── Verificação de duplicado ─────────────────────────────────────────────────
@@ -195,11 +174,8 @@ function saveFromPDF() {
     nif:        document.getElementById('f-nif').value,
     emissao:    document.getElementById('f-emissao').value,
     vencimento: document.getElementById('f-venc').value,
-    descritivo: document.getElementById('f-desc').value,
     base:       document.getElementById('f-base').value,
     iva:        document.getElementById('f-iva').value,
-    retencao:   document.getElementById('f-retencao').value,
-    totalDoc:   document.getElementById('f-totalDoc').value,
     total:      document.getElementById('f-total').value,
     estado:     document.getElementById('f-estado').value,
     pastaId:    document.getElementById('f-pasta').value || null,
@@ -212,8 +188,28 @@ function saveFromPDF() {
   nav(tipo === 'cliente' ? 'clientes' : 'fornecedores');
 }
 
+// ─── Pré-visualização do PDF ──────────────────────────────────────────────────
+function showPdfPreview(file) {
+  const url = URL.createObjectURL(file);
+  const preview = document.getElementById('pdf-preview');
+  const col     = document.getElementById('pdf-preview-col');
+  if (preview && col) {
+    preview.src = url;
+    col.style.display = 'block';
+  }
+}
+
+function closePdfPreview() {
+  const preview = document.getElementById('pdf-preview');
+  const col     = document.getElementById('pdf-preview-col');
+  if (preview) preview.src = '';
+  if (col)     col.style.display = 'none';
+}
+
 function resetUpload() {
   document.getElementById('file-inp').value = '';
   document.getElementById('extracted-box').style.display = 'none';
   document.getElementById('dup-warn').style.display = 'none';
+  closePdfPreview();
+  _currentPDFFile = null;
 }

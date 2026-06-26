@@ -243,34 +243,11 @@ function showSyncStatus(msg) {
 }
 
 // ─── Google Drive: upload de ficheiros ────────────────────────────────────────
-const DRIVE_FOLDER_NAME = 'Faturas - Comprovativos';
-let _driveFolderId = null;
+// ID da pasta partilhada no Google Drive pessoal
+const DRIVE_FOLDER_ID = '1ixLRPks-cemMB1f5SfvWp16IamA0FvTO';
 
 async function getDriveFolderId() {
-  if (_driveFolderId) return _driveFolderId;
-  const token = await getSheetsToken();
-  if (!token) return null;
-
-  // Procura pasta existente
-  const search = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
-    { headers: { Authorization: 'Bearer ' + token } }
-  );
-  const data = await search.json();
-  if (data.files && data.files.length > 0) {
-    _driveFolderId = data.files[0].id;
-    return _driveFolderId;
-  }
-
-  // Cria pasta se não existir
-  const create = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
-  });
-  const folder = await create.json();
-  _driveFolderId = folder.id;
-  return _driveFolderId;
+  return DRIVE_FOLDER_ID;
 }
 
 async function uploadToDrive(file, filename) {

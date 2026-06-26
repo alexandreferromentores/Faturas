@@ -6,13 +6,41 @@ function loadConfig() {
     document.getElementById('cfg-key').value = config.apiKey;
     document.getElementById('cfg-status').textContent = '✓ API Key configurada';
   }
+  if (config.sheetsKey) {
+    document.getElementById('cfg-sheets').value = config.sheetsKey;
+    document.getElementById('cfg-sheets-status').textContent = '✓ Google Sheets configurado';
+  }
 }
 
 function saveConfig() {
-  config.apiKey = document.getElementById('cfg-key').value.trim();
+  config.apiKey    = document.getElementById('cfg-key').value.trim();
+  config.sheetsKey = document.getElementById('cfg-sheets').value.trim();
   localStorage.setItem('fv_config', JSON.stringify(config));
   document.getElementById('cfg-status').textContent = '✓ Guardado';
   toast('Configuração guardada!', 'success');
+}
+
+async function testSheets() {
+  const btn = document.getElementById('cfg-sheets-test');
+  btn.disabled = true;
+  btn.textContent = 'A testar…';
+  try {
+    const ok = await sheetsLoad();
+    if (ok) {
+      document.getElementById('cfg-sheets-status').textContent = '✓ Ligação bem sucedida! Dados carregados.';
+      toast('Google Sheets ligado!', 'success');
+      renderDashboard();
+      updateAlertBadge();
+    } else {
+      document.getElementById('cfg-sheets-status').textContent = '✗ Erro — verifica o JSON';
+      toast('Erro ao ligar ao Sheets', 'error');
+    }
+  } catch(e) {
+    document.getElementById('cfg-sheets-status').textContent = '✗ ' + e.message;
+    toast('Erro: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Testar ligação';
 }
 
 // ─── Exportar CSV ─────────────────────────────────────────────────────────────

@@ -16,10 +16,14 @@ const PASTA_CORES = [
   { name: 'Ciano',    bg: '#E0F4FA', text: '#0E6B8A', border: 'rgba(14,107,138,.3)' },
 ];
 
-// ─── Guardar no localStorage ──────────────────────────────────────────────────
+// ─── Guardar (localStorage + Google Sheets se configurado) ───────────────────
 function save() {
-  localStorage.setItem('fv_invoices', JSON.stringify(invoices));
-  localStorage.setItem('fv_pastas',   JSON.stringify(pastas));
+  if (typeof sheetsSave === 'function') {
+    sheetsSave();
+  } else {
+    localStorage.setItem('fv_invoices', JSON.stringify(invoices));
+    localStorage.setItem('fv_pastas',   JSON.stringify(pastas));
+  }
 }
 
 // ─── Utilitários de formatação ────────────────────────────────────────────────

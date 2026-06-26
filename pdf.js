@@ -148,15 +148,18 @@ async function extractPDFApi(b64, apiKey) {
 
 // ─── Preenche formulário ──────────────────────────────────────────────────────
 function fillExtracted(data) {
-  document.getElementById('f-num').value     = data.numero     || '';
-  document.getElementById('f-ent').value     = data.entidade   || '';
-  document.getElementById('f-nif').value     = data.nif        || '';
-  document.getElementById('f-emissao').value = data.emissao    || '';
-  document.getElementById('f-venc').value    = data.vencimento || '';
-  document.getElementById('f-base').value    = data.base       || '';
-  document.getElementById('f-iva').value     = data.iva        || '';
-  document.getElementById('f-total').value   = data.total      || '';
-  document.getElementById('f-estado').value  = 'pendente';
+  document.getElementById('f-num').value      = data.numero     || '';
+  document.getElementById('f-ent').value      = data.entidade   || '';
+  document.getElementById('f-nif').value      = data.nif        || '';
+  document.getElementById('f-emissao').value  = data.emissao    || '';
+  document.getElementById('f-venc').value     = data.vencimento || '';
+  document.getElementById('f-desc').value     = data.descritivo || '';
+  document.getElementById('f-base').value     = data.base       || '';
+  document.getElementById('f-iva').value      = data.iva        || '';
+  document.getElementById('f-retencao').value = data.retencao   || '';
+  document.getElementById('f-totalDoc').value = data.totalDoc   || '';
+  document.getElementById('f-total').value    = data.total      || '';
+  document.getElementById('f-estado').value   = 'pendente';
 }
 
 // ─── Verificação de duplicado ─────────────────────────────────────────────────

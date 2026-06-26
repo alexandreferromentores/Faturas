@@ -10,7 +10,8 @@ const SHEET_PASTAS  = 'Pastas';
 const HEADERS_FATURAS = [
   'id','addedAt','tipo','numero','entidade','nif','emissao','vencimento',
   'descritivo','base','iva','retencao','totalDoc','total','estado',
-  'dataPagamento','pastaId','notas','comprovavitoUrl','comprovavitoId'
+  'dataPagamento','pastaId','notas','comprovavitoUrl','comprovavitoId',
+  'faturaUrl','faturaId'
 ];
 const HEADERS_PASTAS = ['id','nome','icon','cor'];
 

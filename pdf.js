@@ -66,47 +66,49 @@ async function readPDFText(file) {
 
 // ─── Parser local: Recibo Verde (AT) ─────────────────────────────────────────
 function parseReciboVerde(text) {
-  const numM = text.match(/<(FR\s+[A-Z0-9/]+)>/i);
-  const numero = numM ? numM[1].trim() : '';
+  var numM    = text.match(/<(FR [A-Z0-9/]+)>/i);
+  var numero  = numM ? numM[1].trim() : '';
 
-  const emM = text.match(/emitida em\s+(\d{2}\/\d{2}\/\d{4})/i);
-  const emissao = emM ? emM[1] : '';
+  var emM     = text.match(/emitida em (\d{2}\/\d{2}\/\d{4})/i);
+  var emissao = emM ? emM[1] : '';
 
-  let vencimento = '';
+  var vencimento = '';
   if (emissao) {
-    const p = emissao.split('/').map(Number);
-    const dt = new Date(p[2], p[1]-1, p[0]);
+    var p  = emissao.split('/').map(Number);
+    var dt = new Date(p[2], p[1]-1, p[0]);
     dt.setDate(dt.getDate() + 60);
     vencimento = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
   }
 
-  const nifM = text.match(/(\d{9})\s+TRAVESSA/i);
-  const nif = nifM ? nifM[1] : '';
+  var nifM    = text.match(/(\d{9}) TRAVESSA/i);
+  var nif     = nifM ? nifM[1] : '';
 
-  const entM = text.match(/\d{2}\/\d{2}\/\d{4}\s+([A-Z\u00C0-\u024F][A-Z \u00C0-\u024F]+?)\s{2,}(?:MENTORES|ASSOCIA)/i);
-  const entidade = entM ? entM[1].replace(/\s+/g, ' ').trim() : '';
+  var entM    = text.match(/\d{2}\/\d{2}\/\d{4} {2}([A-Z][A-Z &.-]+?) {2,}(?:MENTORES|ASSOCIA)/i);
+  var entidade = entM ? entM[1].replace(/ +/g, ' ').trim() : '';
 
-  const descM = text.match(/TAXA\s+IVA\s+([\s\S]+?)\s+1\s+Unidade/i);
-  const descritivo = descM ? descM[1].replace(/\s+/g, ' ').trim() : '';
+  var descM    = text.match(/TAXA IVA ([\s\S]+?) 1 Unidade/i);
+  var descritivo = descM ? descM[1].replace(/ +/g, ' ').trim() : '';
 
-  // Sem € no regex — mais robusto
-  const baseM   = text.match(/Valor il[\u00ed\u00ef]quido\s+([\d]+,[\d]{2})/i);
-  const retM    = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?Reten[^\n]*?([\d]+,[\d]{2})/i);
-  const totDocM = text.match(/TOTAL DO DOCUMENTO\s+([\d]+,[\d]{2})/i);
-  const totPagM = text.match(/TOTAL A PAGAR\s+([\d]+,[\d]{2})/i);
-  const ivaM    = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?\bIVA\b\s+([\d]+,[\d]{2})/i);
+  var baseM    = text.match(/Valor il[íi]quido +(\d+,\d{2})/i);
+  var ivaM     = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?\bIVA\b +(\d+,\d{2})/i);
+  var retM     = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?Reten[^\n]*?(\d+,\d{2}) /i);
+  var totDocM  = text.match(/[^S]TOTAL DO DOCUMENTO +(\d+,\d{2})/i);
+  var totPagM  = text.match(/TOTAL A PAGAR +(\d+,\d{2})/i);
 
-  const fix = v => v ? v.replace(',', '.') : '';
-
-  console.log('[PARSER] desc:', descM?.[1]?.slice(0,20), 'ret:', retM?.[1], 'totDoc:', totDocM?.[1], 'base:', baseM?.[1]);
+  var fix = function(v) { return v ? v.replace(',', '.') : ''; };
 
   return {
-    numero, entidade, nif, emissao, vencimento, descritivo,
-    base:     fix(baseM?.[1]),
-    iva:      fix(ivaM?.[1]),
-    retencao: fix(retM?.[1]),
-    totalDoc: fix(totDocM?.[1]),
-    total:    fix(totPagM?.[1]) || fix(totDocM?.[1]),
+    numero:     numero,
+    entidade:   entidade,
+    nif:        nif,
+    emissao:    emissao,
+    vencimento: vencimento,
+    descritivo: descritivo,
+    base:       fix(baseM   ? baseM[1]   : ''),
+    iva:        fix(ivaM    ? ivaM[1]    : ''),
+    retencao:   fix(retM    ? retM[1]    : ''),
+    totalDoc:   fix(totDocM ? totDocM[1] : ''),
+    total:      fix(totPagM ? totPagM[1] : '') || fix(totDocM ? totDocM[1] : ''),
   };
 }
 

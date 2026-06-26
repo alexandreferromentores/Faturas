@@ -152,6 +152,15 @@ function viewInv(idx) {
 // ─── Pastas ───────────────────────────────────────────────────────────────────
 let selectedPastaCor = 0;
 
+// ─── Abrir modal de pasta a partir do formulário de fatura ───────────────────
+// Guarda qual select deve ser actualizado depois de criar a pasta
+let _pastaReturnSelect = null;
+
+function openModalPastaInline(selectId) {
+  _pastaReturnSelect = selectId;
+  openModalPasta();
+}
+
 function openModalPasta() {
   selectedPastaCor = 0;
   document.getElementById('p-cor-opts').innerHTML = PASTA_CORES.map((c, i) => `
@@ -186,6 +195,14 @@ function savePasta() {
   ['ff-pasta', 'cf-pasta'].forEach(populatePastaFilter);
   ['f-pasta',  'm-pasta'].forEach(populatePastaSelect);
   toast('Pasta criada!', 'success');
+
+  // Se veio de um formulário, selecciona a nova pasta automaticamente
+  if (_pastaReturnSelect) {
+    const newPasta = pastas[pastas.length - 1];
+    const sel = document.getElementById(_pastaReturnSelect);
+    if (sel) sel.value = String(newPasta.id);
+    _pastaReturnSelect = null;
+  }
 }
 
 function delPasta(idx) {

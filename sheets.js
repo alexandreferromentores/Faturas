@@ -83,17 +83,14 @@ async function sheetsInit() {
   if (!existing.includes(SHEET_FATURAS)) toCreate.push(SHEET_FATURAS);
   if (!existing.includes(SHEET_PASTAS))  toCreate.push(SHEET_PASTAS);
 
-  console.log('[Sheets] Folhas existentes:', existing);
-  console.log('[Sheets] A criar:', toCreate);
   if (toCreate.length > 0) {
-    const batchResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         requests: toCreate.map(title => ({ addSheet: { properties: { title } } }))
       }),
     });
-    const batchData = await batchResp.json();
     console.log('[Sheets] batchUpdate resposta:', JSON.stringify(batchData).slice(0, 300));
   }
 
@@ -173,22 +170,17 @@ function rowToPasta(row) {
 
 // ─── Sincronizar: carregar da Sheet ──────────────────────────────────────────
 async function sheetsLoad() {
-  console.log('[Sheets] A iniciar ligação...');
   const token = await getSheetsToken();
   if (!token) { console.error('[Sheets] Falhou a obter token'); return false; }
-  console.log('[Sheets] Token obtido com sucesso');
 
   try {
-    console.log('[Sheets] A inicializar folhas...');
     await sheetsInit();
-    console.log('[Sheets] Folhas inicializadas');
 
     const [rowsFat, rowsPas] = await Promise.all([
       sheetsRead(SHEET_FATURAS),
       sheetsRead(SHEET_PASTAS),
     ]);
-    console.log('[Sheets] Faturas lidas:', rowsFat?.length, 'linhas');
-    console.log('[Sheets] Pastas lidas:', rowsPas?.length, 'linhas');
+
 
     // Faturas (ignora cabeçalho)
     if (rowsFat && rowsFat.length > 1) {

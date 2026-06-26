@@ -73,21 +73,32 @@ async function sheetsInit() {
   const token = await getSheetsToken();
   if (!token) return;
 
-  // Verifica se as folhas existem
-  const r = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`,
-    { headers: { Authorization: 'Bearer ' + token } }
-  );
+  // Verifica quais folhas existem
+  const r    = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`, { headers: { Authorization: 'Bearer ' + token } });
   const meta = await r.json();
-  const names = (meta.sheets || []).map(s => s.properties.title);
+  const existing = (meta.sheets || []).map(s => s.properties.title);
 
-  // Cria folha Faturas se não existir
-  if (!names.includes(SHEET_FATURAS)) {
-    await sheetsAppendRow(SHEET_FATURAS, HEADERS_FATURAS, token, true);
+  // Cria as folhas que faltam via batchUpdate
+  const toCreate = [];
+  if (!existing.includes(SHEET_FATURAS)) toCreate.push(SHEET_FATURAS);
+  if (!existing.includes(SHEET_PASTAS))  toCreate.push(SHEET_PASTAS);
+
+  if (toCreate.length > 0) {
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: toCreate.map(title => ({ addSheet: { properties: { title } } }))
+      }),
+    });
   }
-  // Cria folha Pastas se não existir
-  if (!names.includes(SHEET_PASTAS)) {
-    await sheetsAppendRow(SHEET_PASTAS, HEADERS_PASTAS, token, true);
+
+  // Escreve cabeçalhos se as folhas foram criadas agora
+  if (!existing.includes(SHEET_FATURAS)) {
+    await sheetsWrite(SHEET_FATURAS, [HEADERS_FATURAS]);
+  }
+  if (!existing.includes(SHEET_PASTAS)) {
+    await sheetsWrite(SHEET_PASTAS, [HEADERS_PASTAS]);
   }
 }
 

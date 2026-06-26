@@ -141,6 +141,7 @@ function viewInv(idx) {
       ${inv.notas ? `<div class="form-group full"><label>Notas</label><div style="padding:8px 0;font-size:13px;color:var(--muted)">${inv.notas}</div></div>` : ''}
       ${inv.dataPagamento ? `<div class="form-group"><label>Data de Pagamento</label><div style="padding:8px 0">${inv.dataPagamento}</div></div>` : ''}
     </div>
+    ${inv.faturaUrl ? `<div style="margin-top:12px;padding:10px 14px;background:var(--accent-light);border:1px solid var(--accent-border);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:500">📄 PDF da Fatura</span><a href="${inv.faturaUrl}" target="_blank" class="btn btn-primary btn-sm">Ver PDF</a></div>` : ''}
     <div style="display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
       <button class="btn btn-primary btn-sm" onclick="closeModal('modal-detail');openWF(${idx})">⇄ Alterar Estado</button>
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-detail');editInv(${idx})">✎ Editar</button>
@@ -304,6 +305,7 @@ function viewInv(idx) {
       ${inv.notas ? `<div class="form-group full"><label>Notas</label><div style="padding:8px 0;font-size:13px;color:var(--muted)">${inv.notas}</div></div>` : ''}
       ${inv.dataPagamento ? `<div class="form-group"><label>Data de Pagamento</label><div style="padding:8px 0">${inv.dataPagamento}</div></div>` : ''}
     </div>
+    ${inv.faturaUrl ? `<div style="margin-top:12px;padding:10px 14px;background:var(--accent-light);border:1px solid var(--accent-border);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:500">📄 PDF da Fatura</span><a href="${inv.faturaUrl}" target="_blank" class="btn btn-primary btn-sm">Ver PDF</a></div>` : ''}
     <div style="display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
       <button class="btn btn-primary btn-sm" onclick="closeModal('modal-detail');openWF(${idx})">⇄ Alterar Estado</button>
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-detail');editInv(${idx})">✎ Editar</button>

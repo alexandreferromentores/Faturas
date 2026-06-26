@@ -256,3 +256,104 @@ function saveWF() {
   renderForn(); renderCli(); renderDashboard(); updateAlertBadge();
   toast('Estado atualizado!', 'success');
 }
+
+// ─── Comprovativo de pagamento ────────────────────────────────────────────────
+let _currentDetailIdx = null;
+
+// Actualiza o modal de detalhe para mostrar/esconder comprovativo
+function refreshComprovavitoUI(inv) {
+  const existente = document.getElementById('comprovativo-existente');
+  const upload    = document.getElementById('comprovativo-upload');
+  const link      = document.getElementById('comprovativo-link');
+  const loading   = document.getElementById('comp-loading');
+  if (!existente) return;
+  loading.style.display = 'none';
+  if (inv.comprovavitoUrl) {
+    existente.style.display = 'block';
+    upload.style.display    = 'none';
+    link.href               = inv.comprovavitoUrl;
+  } else {
+    existente.style.display = 'none';
+    upload.style.display    = 'block';
+  }
+}
+
+// Override viewInv to track current index and show comprovativo UI
+const _origViewInv = typeof viewInv === 'function' ? viewInv : null;
+
+function viewInv(idx) {
+  _currentDetailIdx = idx;
+  const inv = invoices[idx];
+  const p   = getPasta(inv.pastaId);
+  document.getElementById('detail-title').textContent = inv.entidade || '—';
+  document.getElementById('detail-body').innerHTML = `
+    <div class="form-grid">
+      <div class="form-group"><label>Número</label><div style="font-family:var(--mono);font-size:13px;padding:8px 0">${inv.numero || '—'}</div></div>
+      <div class="form-group"><label>Tipo</label><div style="padding:8px 0">${isClient(inv) ? '👤 Cliente' : '🏢 Fornecedor'}</div></div>
+      <div class="form-group"><label>NIF</label><div style="font-family:var(--mono);font-size:13px;padding:8px 0">${inv.nif || '—'}</div></div>
+      <div class="form-group"><label>Estado</label><div style="padding:8px 0">${estadoBadge(inv)} ${dueBadge(inv)}</div></div>
+      <div class="form-group"><label>Data de Emissão</label><div style="padding:8px 0">${inv.emissao || '—'}</div></div>
+      <div class="form-group"><label>Data de Vencimento</label><div style="padding:8px 0">${inv.vencimento || '—'}</div></div>
+      ${inv.descritivo ? `<div class="form-group full"><label>Descritivo</label><div style="padding:8px 0;font-size:13px">${inv.descritivo}</div></div>` : ''}
+      <div class="form-group"><label>Valor Ilíquido</label><div style="font-family:var(--mono);padding:8px 0">${inv.base ? fmt(inv.base) : '—'}</div></div>
+      <div class="form-group"><label>IVA</label><div style="font-family:var(--mono);padding:8px 0">${inv.iva ? fmt(inv.iva) : '—'}</div></div>
+      ${inv.retencao ? `<div class="form-group"><label>Retenção IRS</label><div style="font-family:var(--mono);padding:8px 0">${fmt(inv.retencao)}</div></div>` : ''}
+      ${inv.totalDoc ? `<div class="form-group"><label>Total Documento</label><div style="font-family:var(--mono);padding:8px 0">${fmt(inv.totalDoc)}</div></div>` : ''}
+      <div class="form-group"><label>Total a Pagar</label><div style="font-family:var(--mono);font-size:16px;font-weight:600;color:var(--accent);padding:8px 0">${fmt(inv.total)}</div></div>
+      ${p ? `<div class="form-group"><label>Pasta</label><div style="padding:8px 0"><span class="folder-chip" style="background:${p.cor.bg};color:${p.cor.text};border-color:${p.cor.border}">${p.icon} ${p.nome}</span></div></div>` : ''}
+      ${inv.notas ? `<div class="form-group full"><label>Notas</label><div style="padding:8px 0;font-size:13px;color:var(--muted)">${inv.notas}</div></div>` : ''}
+      ${inv.dataPagamento ? `<div class="form-group"><label>Data de Pagamento</label><div style="padding:8px 0">${inv.dataPagamento}</div></div>` : ''}
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <button class="btn btn-primary btn-sm" onclick="closeModal('modal-detail');openWF(${idx})">⇄ Alterar Estado</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-detail');editInv(${idx})">✎ Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="closeModal('modal-detail');delInv(${idx})">✕ Apagar</button>
+    </div>`;
+  refreshComprovavitoUI(inv);
+  document.getElementById('modal-detail').classList.add('show');
+}
+
+async function uploadComprovativo(file) {
+  if (!file || _currentDetailIdx === null) return;
+  if (!config.sheetsKey) { toast('Configura o Google Sheets primeiro', 'error'); return; }
+
+  const loading = document.getElementById('comp-loading');
+  const upload  = document.getElementById('comprovativo-upload');
+  loading.style.display = 'inline-flex';
+  upload.style.display  = 'none';
+
+  try {
+    const inv      = invoices[_currentDetailIdx];
+    const filename = `${inv.numero || 'fatura'}_${inv.entidade || ''}_comprovativo.pdf`.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+    const result   = await uploadToDrive(file, filename);
+
+    // Remove ficheiro antigo do Drive se existir
+    if (inv.comprovavitoId) {
+      await deleteFromDrive(inv.comprovavitoId).catch(() => {});
+    }
+
+    invoices[_currentDetailIdx].comprovavitoUrl = result.url;
+    invoices[_currentDetailIdx].comprovavitoId  = result.id;
+    save();
+    refreshComprovavitoUI(invoices[_currentDetailIdx]);
+    toast('Comprovativo carregado!', 'success');
+  } catch (e) {
+    loading.style.display = 'none';
+    upload.style.display  = 'block';
+    toast('Erro ao carregar: ' + e.message, 'error');
+  }
+}
+
+async function removeComprovativo() {
+  if (_currentDetailIdx === null) return;
+  if (!confirm('Remover comprovativo?')) return;
+  const inv = invoices[_currentDetailIdx];
+  if (inv.comprovavitoId) {
+    await deleteFromDrive(inv.comprovavitoId).catch(() => {});
+  }
+  delete invoices[_currentDetailIdx].comprovavitoUrl;
+  delete invoices[_currentDetailIdx].comprovavitoId;
+  save();
+  refreshComprovavitoUI(invoices[_currentDetailIdx]);
+  toast('Comprovativo removido');
+}

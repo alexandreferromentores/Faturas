@@ -65,43 +65,79 @@ async function readPDFText(file) {
 }
 
 // ─── Parser local: Recibo Verde (AT) ─────────────────────────────────────────
-// Funciona com Fatura-Recibo emitida pelo Portal das Finanças.
-// Para adicionar suporte a outros tipos, cria uma função parseXxx(text)
-// e chama-a em handleFile antes do fallback para API.
+// Baseado no texto real extraído pelo PDF.js do Portal das Finanças.
+// O texto vem como uma linha contínua.
 function parseReciboVerde(text) {
-  // Número: "FR ATSIRE01FR/22" dentro de < >
-  const numMatch = text.match(/<([^>]{3,40})>/);
+
+  // ── Número da fatura ──────────────────────────────────────────────────────
+  // Formato: "<FR ATSIRE01FR/22>"
+  const numMatch = text.match(/<(FR\s+[A-Z0-9\/]+)>/i);
   const numero   = numMatch ? numMatch[1].trim() : '';
 
-  // Data de emissão
+  // ── Data de emissão ───────────────────────────────────────────────────────
   const emissaoMatch = text.match(/emitida em\s+(\d{2}\/\d{2}\/\d{4})/i);
   const emissao      = emissaoMatch ? emissaoMatch[1] : '';
 
-  // Prestador: nome depois de "NOME" antes de "DOMICÍLIO"
-  const prestadorMatch = text.match(/NOME\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][^]+?)\s+DOM[IÍ]C[IÍ]LIO/i);
-  const entidade       = prestadorMatch ? prestadorMatch[1].replace(/\s+/g, ' ').trim() : '';
+  // ── Data de vencimento: emissão + 60 dias ─────────────────────────────────
+  let vencimento = '';
+  if (emissao) {
+    const [d, m, y] = emissao.split('/').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + 60);
+    vencimento = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
+  }
 
-  // NIF do prestador
-  const nifMatch = text.match(/(?:NIF|FISCAL)\s*[)\-–:]\s*(\d{9})/i);
-  const nif      = nifMatch ? nifMatch[1] : '';
+  // ── NIF do prestador ──────────────────────────────────────────────────────
+  // Layout: "SOUTO MAIOR SBR 169277895 TRAVESSA" — NIF de 9 dígitos antes de TRAVESSA
+  const nifPrestMatch = text.match(/(\d{9})\s+TRAVESSA/i);
+  // Fallback: "NIF) - 169277895"
+  const nifFallMatch  = text.match(/NIF\)\s*[-–]\s*(\d{9})/i);
+  const nif = nifPrestMatch ? nifPrestMatch[1] : (nifFallMatch ? nifFallMatch[1] : '');
 
-  // Helper monetário: extrai o primeiro valor após o label
-  const money = pattern => {
-    const m = text.match(new RegExp(pattern + '[^\\d]*([\\d]+[.,][\\d]{2})', 'i'));
-    return m ? m[1].replace('.', '').replace(',', '.') : '';
+  // ── Prestador (fornecedor) ────────────────────────────────────────────────
+  // Layout: "29/11/2024 ANTONIO MANUEL BORGES DIAS PEREIRA DE JESUS MENTORES"
+  // O nome do prestador aparece entre a data de realização e "MENTORES" ou "ASSOCIA"
+  let entidade = '';
+  const dataReal = emissao;
+  if (dataReal) {
+    const escapedDate = dataReal.replace(/\//g, '\/');
+    const prestMatch = text.match(new RegExp(escapedDate + '\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ\s&.,-]+?)\s+(?:MENTORES|ASSOCIA|NÚMERO)', 'i'));
+    if (prestMatch) entidade = prestMatch[1].replace(/\s+/g, ' ').trim();
+  }
+  // Fallback: entre NIF e MENTORES
+  if (!entidade) {
+    const fb = text.match(/\d{9}\s+(?:TRAVESSA[^A-Z]*?)([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ\s&.,-]+?)\s+(?:MENTORES|ASSOCIA)/i);
+    if (fb) entidade = fb[1].replace(/\s+/g, ' ').trim();
+  }
+
+  // ── Descritivo ────────────────────────────────────────────────────────────
+  // Entre "TAXA IVA" e o número de unidades "1 Unidade"
+  const descMatch = text.match(/TAXA\s+IVA\s+([\s\S]+?)\s+\d+\s+Unidade/i);
+  const descritivo = descMatch ? descMatch[1].replace(/\s+/g, ' ').trim() : '';
+
+  // ── Helper monetário ──────────────────────────────────────────────────────
+  const money = (pattern) => {
+    const m = text.match(new RegExp(pattern + '[^\d]*(\d+[,.]\d{2})', 'i'));
+    return m ? m[1].replace(/\./g, '').replace(',', '.') : '';
   };
 
-  const base  = money('Valor il[ií]quido');
-  const iva   = money('\\bIVA\\b(?!\\s+\\d+\\s*%)(?:[^\\d]*\\d+[.,]\\d{2}[^\\d]*){0,3}');
-  const total = money('TOTAL A PAGAR') || money('TOTAL DO DOCUMENTO');
+  // ── Valores ───────────────────────────────────────────────────────────────
+  const base     = money('Valor il[ií]quido');
+  const retencao = money('Reten[cç][aã]o na fonte IRS');
+  const totalDoc = money('TOTAL DO DOCUMENTO');
+  const total    = money('TOTAL A PAGAR') || totalDoc;
 
-  // IVA: tenta linha de totais directamente
-  const ivaTotsMatch = text.match(/\bIVA\b\s+([\d]+[.,][\d]{2})\s*€?/i);
-  const ivaFinal = ivaTotsMatch
-    ? ivaTotsMatch[1].replace('.', '').replace(',', '.')
-    : iva;
+  // IVA: apanhar valor entre "IVA" e "Imposto do Selo" nos totais
+  const ivaMatch = text.match(/IVA\s+([\d]+[,.][\d]{2})\s*[€]?\s*Imposto/i);
+  // Fallback: primeiro valor numérico após "IVA" que não seja percentagem
+  const ivaFb    = text.match(/IVA\s+([\d]+[,.][\d]{2})\s*[€]/i);
+  const iva      = ivaMatch
+    ? ivaMatch[1].replace(',', '.')
+    : ivaFb
+      ? ivaFb[1].replace(',', '.')
+      : '';
 
-  return { numero, entidade, nif, emissao, vencimento: '', base, iva: ivaFinal, total };
+  return { numero, entidade, nif, emissao, vencimento, descritivo, base, iva, retencao, totalDoc, total };
 }
 
 // ─── toBase64 (para fallback API) ────────────────────────────────────────────

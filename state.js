@@ -108,7 +108,6 @@ function nav(name) {
   if (name === 'alertas')      renderAlertas();
   if (name === 'config')       loadConfig();
   if (name === 'assistente')   initChat();
-  if (name === 'nova')         { populatePastaSelect('f-pasta'); resetUpload(); }
   if (name === 'pesquisa')     renderPesquisa();
   updateAlertBadge();
 }

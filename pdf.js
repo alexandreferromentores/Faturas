@@ -166,7 +166,7 @@ function checkDuplicate(data) {
 
 // ─── Guardar fatura do PDF ────────────────────────────────────────────────────
 function saveFromPDF() {
-  const tipo = document.querySelector('[name=novo-tipo]:checked').value;
+  const tipo = document.getElementById('upload-tipo')?.value || document.querySelector('[name=novo-tipo]:checked')?.value || 'fornecedor';
   const inv  = buildInv({
     tipo,
     numero:     document.getElementById('f-num').value,
@@ -185,25 +185,24 @@ function saveFromPDF() {
   save();
   toast('Fatura guardada!', 'success');
   resetUpload();
+  closeModal('modal-upload');
   nav(tipo === 'cliente' ? 'clientes' : 'fornecedores');
 }
 
 // ─── Pré-visualização do PDF ──────────────────────────────────────────────────
 function showPdfPreview(file) {
-  const url = URL.createObjectURL(file);
+  const url     = URL.createObjectURL(file);
   const preview = document.getElementById('pdf-preview');
-  const col     = document.getElementById('pdf-preview-col');
-  if (preview && col) {
-    preview.src = url;
-    col.style.display = 'block';
-  }
+  const empty   = document.getElementById('pdf-preview-empty');
+  if (preview) { preview.src = url; preview.style.display = 'block'; }
+  if (empty)   empty.style.display = 'none';
 }
 
 function closePdfPreview() {
   const preview = document.getElementById('pdf-preview');
-  const col     = document.getElementById('pdf-preview-col');
-  if (preview) preview.src = '';
-  if (col)     col.style.display = 'none';
+  const empty   = document.getElementById('pdf-preview-empty');
+  if (preview) { preview.src = ''; preview.style.display = 'none'; }
+  if (empty)   empty.style.display = 'block';
 }
 
 function resetUpload() {

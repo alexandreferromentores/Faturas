@@ -67,55 +67,50 @@ async function readPDFText(file) {
 // ─── Parser local: Recibo Verde (AT) ─────────────────────────────────────────
 function parseReciboVerde(text) {
 
-  // ── Número ────────────────────────────────────────────────────────────────
-  const numMatch = text.match(/<(FR\s+[A-Z0-9\/]+)>/i);
+  // Número: "<FR ATSIRE01FR/22>"
+  const numMatch = text.match(/<(FR\s+[A-Z0-9/]+)>/i);
   const numero   = numMatch ? numMatch[1].trim() : '';
 
-  // ── Data de emissão ───────────────────────────────────────────────────────
+  // Data de emissão
   const emissaoMatch = text.match(/emitida em\s+(\d{2}\/\d{2}\/\d{4})/i);
   const emissao      = emissaoMatch ? emissaoMatch[1] : '';
 
-  // ── Vencimento: emissão + 60 dias ─────────────────────────────────────────
+  // Vencimento: emissão + 60 dias
   let vencimento = '';
   if (emissao) {
-    const [dd, mm, yy] = emissao.split('/').map(Number);
-    const dt = new Date(yy, mm - 1, dd);
+    const parts = emissao.split('/').map(Number);
+    const dt = new Date(parts[2], parts[1] - 1, parts[0]);
     dt.setDate(dt.getDate() + 60);
     vencimento = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
   }
 
-  // ── NIF do prestador ──────────────────────────────────────────────────────
-  // Texto: "SOUTO MAIOR SBR 169277895 TRAVESSA"
-  const nifMatch = text.match(/(\d{9})\s+TRAVESSA/i);
+  // NIF: 9 dígitos antes de "TRAVESSA"
+  const nifMatch = text.match(/(\d{9})\s+TRAVESSA/i);
   const nif      = nifMatch ? nifMatch[1] : '';
 
-  // ── Entidade (prestador) ──────────────────────────────────────────────────
+  // Entidade: entre data de realização e "MENTORES"
   // Texto: "29/11/2024  ANTONIO MANUEL BORGES DIAS PEREIRA DE JESUS  MENTORES"
-  // Depois da data de realização, antes de "MENTORES" ou "ASSOCIA"
-  const entMatch = text.match(/\d{2}\/\d{2}\/\d{4}\s+([A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ][A-ZÀÁÂÃÄÇÉÊÍÓÔÕÚÜ\s]+?)\s{2,}(?:MENTORES|ASSOCIA)/i);
+  const entMatch = text.match(/\d{2}\/\d{2}\/\d{4}\s+([A-Z\u00C0-\u024F][A-Z\u00C0-\u024F\s]+?)\s{2,}(?:MENTORES|ASSOCIA)/i);
   const entidade = entMatch ? entMatch[1].replace(/\s+/g, ' ').trim() : '';
 
-  // ── Descritivo ────────────────────────────────────────────────────────────
-  // Entre "TAXA IVA" e "1 Unidade"
+  // Descritivo: entre "TAXA IVA" e "1 Unidade"
   const descMatch = text.match(/TAXA\s+IVA\s+([\s\S]+?)\s+1\s+Unidade/i);
   const descritivo = descMatch ? descMatch[1].replace(/\s+/g, ' ').trim() : '';
 
-  // ── Helper monetário ──────────────────────────────────────────────────────
-  // Formato real: "500,00 €" — valor seguido de espaço e €
-  const money = (label) => {
-    const r = new RegExp(label + '\s+([\d]+,[\d]{2})\s*€', 'i');
+  // Helper monetário: "Label   500,00 €"
+  const money = function(label) {
+    const r = new RegExp(label + '\\s+([\\d]+,[\\d]{2})\\s*\u20ac', 'i');
     const m = text.match(r);
     return m ? m[1].replace(',', '.') : '';
   };
 
-  // ── Valores ───────────────────────────────────────────────────────────────
-  const base     = money('Valor il[ií]quido');
-  const retencao = money('Reten[cç][aã]o na fonte IRS');
+  const base     = money('Valor il[\u00ed\u00ed]quido');
+  const retencao = money('Reten[c\u00e7][a\u00e3]o na fonte IRS');
   const totalDoc = money('TOTAL DO DOCUMENTO');
   const total    = money('TOTAL A PAGAR') || totalDoc;
 
   // IVA nos totais: "IVA   115,00 €  Imposto"
-  const ivaMatch = text.match(/IVA\s+([\d]+,[\d]{2})\s*€\s*Imposto/i);
+  const ivaMatch = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?IVA\s+([\d]+,[\d]{2})\s*\u20ac/i);
   const iva      = ivaMatch ? ivaMatch[1].replace(',', '.') : '';
 
   return { numero, entidade, nif, emissao, vencimento, descritivo, base, iva, retencao, totalDoc, total };

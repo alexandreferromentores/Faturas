@@ -424,41 +424,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
-<script src="sheets.js"></script>
-<script src="state.js"></script>
-<script src="invoices.js"></script>
-<script src="pdf.js?v=1782480026"></script>
-<script src="render.js"></script>
-<script src="chat.js"></script>
-<script src="config.js"></script>
+<!-- Core -->
+<script src="js/data/sheets.js?v=1782490288"></script>
+<script src="js/data/drive.js?v=1782490288"></script>
+<script src="js/core/state.js?v=1782490288"></script>
+<script src="js/core/ui.js?v=1782490288"></script>
+<!-- Features -->
+<script src="js/features/invoices.js?v=1782490288"></script>
+<script src="js/features/pdf.js?v=1782490288"></script>
+<script src="js/features/render.js?v=1782490288"></script>
+<script src="js/features/chat.js?v=1782490288"></script>
+<script src="js/features/config.js?v=1782490288"></script>
+<!-- Navigation (last) -->
+<script src="js/core/nav.js?v=1782490288"></script>
 
-<script>
-// ── Dropdown logic ─────────────────────────────────────────────────────────
-function toggleDropdown(id) {
-  const menu = document.getElementById(id + '-menu');
-  document.querySelectorAll('.btn-dropdown-menu').forEach(m => { if (m !== menu) m.classList.remove('show'); });
-  menu.classList.toggle('show');
-}
-function closeDropdowns() {
-  document.querySelectorAll('.btn-dropdown-menu').forEach(m => m.classList.remove('show'));
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('.btn-dropdown')) closeDropdowns();
-});
-
-// ── Upload modal ────────────────────────────────────────────────────────────
-function openUploadModal(tipo) {
-  document.getElementById('upload-tipo').value = tipo;
-  document.getElementById('upload-modal-title').textContent = tipo === 'cliente' ? 'Carregar Fatura de Cliente' : 'Carregar Fatura de Fornecedor';
-  populatePastaSelect('f-pasta');
-  resetUpload();
-  document.getElementById('modal-upload').classList.add('show');
-}
-function closeUploadModal() {
-  document.getElementById('modal-upload').classList.remove('show');
-  resetUpload();
-}
-
-</script>
 </body>
 </html>

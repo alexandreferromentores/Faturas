@@ -31,7 +31,9 @@ async function handleFile(file) {
 
   try {
     const text = await readPDFText(file);
+    console.log('PDF TEXT:', text.slice(0, 2000));
     let data = parseReciboVerde(text);
+    console.log('PARSED:', JSON.stringify(data));
 
     // Se o parser local não reconheceu o documento e há API key, usa IA
     if (!data.entidade && !data.numero && config.apiKey) {

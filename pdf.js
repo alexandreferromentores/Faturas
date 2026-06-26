@@ -89,11 +89,12 @@ function parseReciboVerde(text) {
   const descM = text.match(/TAXA\s+IVA\s+([\s\S]+?)\s+1\s+Unidade/i);
   const descritivo = descM ? descM[1].replace(/\s+/g, ' ').trim() : '';
 
-  const baseM    = text.match(/Valor il[íi]quido\s+([\d]+,[\d]{2})\s*€/i);
-  const retM     = text.match(/Reten[çc][ãa]o na fonte IRS\s+([\d]+,[\d]{2})\s*€/i);
-  const totDocM  = text.match(/TOTAL DO DOCUMENTO\s+([\d]+,[\d]{2})\s*€/i);
-  const totPagM  = text.match(/TOTAL A PAGAR\s+([\d]+,[\d]{2})\s*€/i);
-  const ivaM     = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?\bIVA\b\s+([\d]+,[\d]{2})\s*€/i);
+  // Sem € no regex — mais robusto
+  const baseM   = text.match(/Valor il[\u00ed\u00ef]quido\s+([\d]+,[\d]{2})/i);
+  const retM    = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?Reten[^\n]*?([\d]+,[\d]{2})/i);
+  const totDocM = text.match(/TOTAL DO DOCUMENTO\s+([\d]+,[\d]{2})/i);
+  const totPagM = text.match(/TOTAL A PAGAR\s+([\d]+,[\d]{2})/i);
+  const ivaM    = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?\bIVA\b\s+([\d]+,[\d]{2})/i);
 
   const fix = v => v ? v.replace(',', '.') : '';
 

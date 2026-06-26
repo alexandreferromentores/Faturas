@@ -98,7 +98,8 @@ function parseReciboVerde(text) {
 
   const fix = v => v ? v.replace(',', '.') : '';
 
-  console.log('DESC:', descM?.[1]?.slice(0,30), 'RET:', retM?.[1], 'TOTDOC:', totDocM?.[1]);
+  console.log('[PARSER] desc:', descM?.[1]?.slice(0,20), 'ret:', retM?.[1], 'totDoc:', totDocM?.[1], 'base:', baseM?.[1]);
+
   return {
     numero, entidade, nif, emissao, vencimento, descritivo,
     base:     fix(baseM?.[1]),

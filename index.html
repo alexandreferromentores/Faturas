@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faturas</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Upload modal */
+    .upload-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:500; align-items:center; justify-content:center; }
+    .upload-modal-overlay.show { display:flex; }
+    .upload-modal { background:var(--surface); border-radius:10px; width:900px; max-width:95vw; max-height:90vh; overflow:hidden; display:flex; flex-direction:column; }
+    .upload-modal-header { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; border-bottom:1px solid var(--border); }
+    .upload-modal-body { display:grid; grid-template-columns:1fr 1fr; flex:1; overflow:hidden; }
+    .upload-modal-left { padding:20px; overflow-y:auto; border-right:1px solid var(--border); }
+    .upload-modal-right { display:flex; flex-direction:column; background:#f8f8f8; }
+    .pdf-preview-wrap { flex:1; display:flex; align-items:center; justify-content:center; padding:12px; }
+    .pdf-preview-wrap iframe { width:100%; height:100%; min-height:400px; border:none; border-radius:4px; }
+    .pdf-preview-empty { text-align:center; color:var(--muted); font-size:13px; }
+    /* Dropdown carregar */
+    .btn-dropdown { position:relative; display:inline-flex; }
+    .btn-dropdown-menu { display:none; position:absolute; top:calc(100% + 6px); right:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); box-shadow:0 4px 16px rgba(0,0,0,.1); min-width:220px; z-index:100; overflow:hidden; }
+    .btn-dropdown-menu.show { display:block; }
+    .btn-dropdown-item { display:flex; align-items:center; gap:10px; padding:11px 16px; font-size:13px; cursor:pointer; transition:background .1s; }
+    .btn-dropdown-item:hover { background:var(--bg); }
+    .btn-dropdown-item .ddi-icon { font-size:18px; flex-shrink:0; }
+    .btn-dropdown-item .ddi-label { font-weight:500; color:var(--text); }
+    .btn-dropdown-item .ddi-sub { font-size:11px; color:var(--muted); }
+    .btn-dropdown-divider { border:none; border-top:1px solid var(--border); margin:4px 0; }
+    /* Email import */
+    .email-import-area { width:100%; min-height:120px; font-family:var(--sans); font-size:13px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Navegação lateral ── -->
+  <nav>
+    <div class="nav-logo">
+      <span>faturas/</span>
+      <small>gestão de pagamentos</small>
+      <div id="sync-status" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;min-height:14px"></div>
+    </div>
+    <div class="nav-items">
+      <div class="nav-group">Geral</div>
+      <div class="nav-item active" onclick="nav('dashboard')"><span class="ic">⊞</span> Dashboard</div>
+      <div class="nav-item" onclick="nav('alertas')">
+        <span class="ic">🔔</span> Alertas
+        <span class="nav-badge red" id="badge-alertas" style="display:none">0</span>
+      </div>
+      <div class="nav-group">Faturas</div>
+      <div class="nav-item" onclick="nav('fornecedores')"><span class="ic">🏢</span> Fornecedores</div>
+      <div class="nav-item" onclick="nav('clientes')"><span class="ic">👤</span> Clientes</div>
+      <div class="nav-item" onclick="nav('pesquisa')"><span class="ic">🔍</span> Pesquisa</div>
+      <div class="nav-group">Organização</div>
+      <div class="nav-item" onclick="nav('pastas')"><span class="ic">📁</span> Pastas</div>
+      <div class="nav-item" onclick="nav('assistente')"><span class="ic">✦</span> Assistente IA</div>
+    </div>
+    <div class="nav-bottom">
+      <div class="nav-settings" onclick="nav('config')">⚙ Configuração</div>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div><div class="page-title">Dashboard</div><div class="page-sub">Visão geral financeira</div></div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">💸 Fornecedores</div>
+      <div class="metrics" style="margin-bottom:20px">
+        <div class="metric"><div class="metric-label">Total Faturado</div><div class="metric-value c-blue" id="m-forn-total">0,00 €</div><div class="metric-count" id="m-forn-total-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Pago</div><div class="metric-value c-green" id="m-forn-pago">0,00 €</div><div class="metric-count" id="m-forn-pago-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Pendente</div><div class="metric-value c-amber" id="m-forn-pend">0,00 €</div><div class="metric-count" id="m-forn-pend-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Vencidas</div><div class="metric-value c-red" id="m-forn-venc">0,00 €</div><div class="metric-count" id="m-forn-venc-n">0 faturas</div></div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">💰 Clientes</div>
+      <div class="metrics" style="margin-bottom:24px">
+        <div class="metric"><div class="metric-label">Total Emitido</div><div class="metric-value c-blue" id="m-cli-total">0,00 €</div><div class="metric-count" id="m-cli-total-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Recebido</div><div class="metric-value c-green" id="m-cli-rec">0,00 €</div><div class="metric-count" id="m-cli-rec-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Por Receber</div><div class="metric-value c-amber" id="m-cli-pend">0,00 €</div><div class="metric-count" id="m-cli-pend-n">0 faturas</div></div>
+        <div class="metric"><div class="metric-label">Em Atraso</div><div class="metric-value c-red" id="m-cli-venc">0,00 €</div><div class="metric-count" id="m-cli-venc-n">0 faturas</div></div>
+      </div>
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px">💰 Cash Flow Projetado</div>
+        <div class="three-col" id="dash-cashflow"></div>
+      </div>
+      <div class="two-col" style="margin-bottom:20px">
+        <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:14px">📊 Últimos 6 Meses</div><canvas id="chart-mensal" height="160"></canvas></div>
+        <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:14px">🗂 Distribuição por Pasta</div><canvas id="chart-pastas" height="160"></canvas><div id="chart-pastas-legend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
+      </div>
+      <div class="two-col">
+        <div class="card"><div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Faturas Recentes</div><div id="dash-recent"></div></div>
+        <div class="card"><div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Vencimentos Próximos</div><div id="dash-venc"></div></div>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div id="page-alertas" class="page">
+      <div class="page-header"><div><div class="page-title">Alertas</div><div class="page-sub">Faturas que precisam de atenção</div></div></div>
+      <div class="card"><div id="alertas-list"></div></div>
+    </div>
+
+    <!-- FORNECEDORES -->
+    <div id="page-fornecedores" class="page">
+      <div class="page-header">
+        <div><div class="page-title">Fornecedores</div><div class="page-sub" id="forn-count">0 faturas</div></div>
+        <div class="btn-dropdown" id="dd-forn">
+          <button class="btn btn-primary" onclick="toggleDropdown('dd-forn')">⬆ Carregar ▾</button>
+          <div class="btn-dropdown-menu" id="dd-forn-menu">
+            <div class="btn-dropdown-item" onclick="openUploadModal('fornecedor');closeDropdowns()">
+              <span class="ddi-icon">📄</span><div><div class="ddi-label">Fatura PDF</div><div class="ddi-sub">Extração automática de dados</div></div>
+            </div>
+<hr class="btn-dropdown-divider">
+            <div class="btn-dropdown-item" onclick="openManual('fornecedor');closeDropdowns()">
+              <span class="ddi-icon">✏️</span><div><div class="ddi-label">Manual — Fornecedor</div><div class="ddi-sub">Preenche os dados sem ficheiro</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="forn-kpis" style="margin-bottom:20px"></div>
+      <div class="filters">
+        <input class="finp" id="ff-de" type="text" placeholder="De: MM/AAAA" oninput="renderForn()" style="width:120px">
+        <input class="finp" id="ff-ate" type="text" placeholder="Até: MM/AAAA" oninput="renderForn()" style="width:120px">
+        <select class="fsel" id="ff-estado" onchange="renderForn()">
+          <option value="">Todos os estados</option>
+          <option value="pendente">Pendente</option>
+          <option value="aguarda">Ag. Aprovação</option>
+          <option value="aprovada">Aprovada</option>
+          <option value="pago">Pago</option>
+          <option value="vencido">Vencido</option>
+        </select>
+        <select class="fsel" id="ff-pasta" onchange="renderForn()"><option value="">Todas as pastas</option></select>
+        <input class="finp" id="ff-search" placeholder="Pesquisar…" oninput="renderForn()">
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap">
+          <table><thead><tr><th>Estado</th><th>Nº Fatura</th><th>Fornecedor</th><th>NIF</th><th>Emissão</th><th>Vencimento</th><th>Total</th><th>Pasta</th><th></th></tr></thead>
+          <tbody id="forn-body"></tbody></table>
+        </div>
+        <div id="forn-empty" class="empty" style="display:none"><div class="empty-icon">🏢</div><h3>Sem faturas de fornecedores</h3><p>Usa o botão Carregar para adicionar.</p></div>
+      </div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div id="page-clientes" class="page">
+      <div class="page-header">
+        <div><div class="page-title">Clientes</div><div class="page-sub" id="cli-count">0 faturas</div></div>
+        <div class="btn-dropdown" id="dd-cli">
+          <button class="btn btn-primary" onclick="toggleDropdown('dd-cli')">⬆ Carregar ▾</button>
+          <div class="btn-dropdown-menu" id="dd-cli-menu">
+            <div class="btn-dropdown-item" onclick="openUploadModal('cliente');closeDropdowns()">
+              <span class="ddi-icon">📄</span><div><div class="ddi-label">Fatura PDF</div><div class="ddi-sub">Extração automática de dados</div></div>
+            </div>
+<hr class="btn-dropdown-divider">
+            <div class="btn-dropdown-item" onclick="openManual('cliente');closeDropdowns()">
+              <span class="ddi-icon">✏️</span><div><div class="ddi-label">Manual — Cliente</div><div class="ddi-sub">Preenche os dados sem ficheiro</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="cli-kpis" style="margin-bottom:20px"></div>
+      <div class="filters">
+        <input class="finp" id="cf-de" type="text" placeholder="De: MM/AAAA" oninput="renderCli()" style="width:120px">
+        <input class="finp" id="cf-ate" type="text" placeholder="Até: MM/AAAA" oninput="renderCli()" style="width:120px">
+        <select class="fsel" id="cf-estado" onchange="renderCli()">
+          <option value="">Todos os estados</option>
+          <option value="pendente">Pendente</option>
+          <option value="recebido">Recebido</option>
+          <option value="vencido">Vencido</option>
+        </select>
+        <select class="fsel" id="cf-pasta" onchange="renderCli()"><option value="">Todas as pastas</option></select>
+        <input class="finp" id="cf-search" placeholder="Pesquisar…" oninput="renderCli()">
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap">
+          <table><thead><tr><th>Estado</th><th>Nº Fatura</th><th>Cliente</th><th>NIF</th><th>Emissão</th><th>Vencimento</th><th>Total</th><th>Pasta</th><th></th></tr></thead>
+          <tbody id="cli-body"></tbody></table>
+        </div>
+        <div id="cli-empty" class="empty" style="display:none"><div class="empty-icon">👤</div><h3>Sem faturas de clientes</h3><p>Usa o botão Carregar para adicionar.</p></div>
+      </div>
+    </div>
+
+    <!-- PESQUISA GLOBAL -->
+    <div id="page-pesquisa" class="page">
+      <div class="page-header"><div><div class="page-title">Pesquisa</div><div class="page-sub">Encontra qualquer fatura</div></div></div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <input class="finp" id="pesq-texto" placeholder="Entidade, número, descritivo…" oninput="renderPesquisa()" style="width:280px">
+        <select class="fsel" id="pesq-tipo" onchange="renderPesquisa()"><option value="">Todos os tipos</option><option value="fornecedor">Fornecedor</option><option value="cliente">Cliente</option></select>
+        <select class="fsel" id="pesq-estado" onchange="renderPesquisa()"><option value="">Todos os estados</option><option value="pendente">Pendente</option><option value="aprovada">Aprovada</option><option value="pago">Pago</option><option value="vencido">Vencido</option></select>
+        <input class="finp" id="pesq-de" type="text" placeholder="De: MM/AAAA" oninput="renderPesquisa()" style="width:130px">
+        <input class="finp" id="pesq-ate" type="text" placeholder="Até: MM/AAAA" oninput="renderPesquisa()" style="width:130px">
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap">
+          <table><thead><tr><th>Tipo</th><th>Estado</th><th>Nº Fatura</th><th>Entidade</th><th>Emissão</th><th>Vencimento</th><th>Total</th><th>Pasta</th><th></th></tr></thead>
+          <tbody id="pesq-body"></tbody></table>
+        </div>
+        <div id="pesq-empty" class="empty" style="display:none"><div class="empty-icon">🔍</div><h3>Sem resultados</h3><p>Tenta outros termos de pesquisa.</p></div>
+      </div>
+    </div>
+
+    <!-- PASTAS -->
+    <div id="page-pastas" class="page">
+      <div class="page-header"><div><div class="page-title">Pastas</div><div class="page-sub">Organiza as faturas por categoria</div></div><button class="btn btn-primary" onclick="openModalPasta()">＋ Nova Pasta</button></div>
+      <div id="pasta-grid" class="folder-grid"></div>
+      <div id="pasta-empty" class="empty" style="display:none"><div class="empty-icon">📁</div><h3>Sem pastas criadas</h3><p>Cria categorias como "EDP", "Contabilidade".</p></div>
+    </div>
+
+    <!-- ASSISTENTE IA -->
+    <div id="page-assistente" class="page">
+      <div class="page-header"><div><div class="page-title">Assistente IA</div><div class="page-sub">Pergunta sobre faturas, cash flow ou pendentes</div></div></div>
+      <div class="chat-wrap">
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-inp" placeholder="Ex: Quanto tenho pendente este mês?" onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="btn btn-primary" onclick="sendChat()" id="chat-btn">Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIGURAÇÃO -->
+    <div id="page-config" class="page">
+      <div class="page-header"><div><div class="page-title">Configuração</div><div class="page-sub">API Key e dados</div></div></div>
+      <div class="card">
+        <div style="margin-bottom:24px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">Anthropic API Key</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Necessária para extração automática de PDFs e Assistente IA. Obtém em <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></p>
+          <div style="display:flex;gap:10px"><input type="password" id="cfg-key" placeholder="sk-ant-…" style="flex:1;max-width:400px"><button class="btn btn-primary" onclick="saveConfig()">Guardar</button></div>
+          <div id="cfg-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+        </div>
+        <div style="margin-bottom:24px">
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">Google Sheets</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Cola aqui o conteúdo do ficheiro JSON da Service Account para guardar os dados na cloud.</p>
+          <div style="margin-bottom:10px"><textarea id="cfg-sheets" placeholder='Cole aqui o conteúdo do ficheiro JSON da Service Account...' style="width:100%;max-width:600px;height:120px;font-family:var(--mono);font-size:11px"></textarea></div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn btn-primary" onclick="saveConfig();testSheets()" id="cfg-sheets-test">Testar ligação</button>
+            <div id="cfg-sheets-status" style="font-size:12px;color:var(--muted)"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">Dados locais</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Exportar ou limpar os dados guardados localmente.</p>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportRelatorio()">📊 Relatório Mensal</button>
+            <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑 Apagar tudo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Modal: Upload PDF com pré-visualização ── -->
+<div class="upload-modal-overlay" id="modal-upload">
+  <div class="upload-modal">
+    <div class="upload-modal-header">
+      <div style="font-size:16px;font-weight:600" id="upload-modal-title">Carregar Fatura PDF</div>
+      <button class="icon-btn" onclick="closeUploadModal()">✕</button>
+    </div>
+    <div class="upload-modal-body">
+      <!-- Esquerda: formulário -->
+      <div class="upload-modal-left">
+        <input type="hidden" id="upload-tipo">
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-inp').click()" ondragover="dragOver(event)" ondragleave="dragLeave()" ondrop="dropFile(event)" style="padding:24px;margin-bottom:14px">
+          <div style="font-size:24px;margin-bottom:6px">📄</div>
+          <div style="font-size:13px;font-weight:500">Arrasta o PDF ou clica para selecionar</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Apenas ficheiros PDF</div>
+        </div>
+        <input type="file" id="file-inp" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+        <div class="loading" id="loading-ext"><div class="spinner"></div> A extrair dados com IA…</div>
+        <div id="dup-warn" class="dup-warning" style="display:none">⚠️ Possível duplicado detectado.</div>
+        <div id="extracted-box" style="display:none">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:12px">✓ Confirma e corrige se necessário</div>
+          <div class="form-grid">
+            <div class="form-group"><label>Número da Fatura</label><input id="f-num" type="text"></div>
+            <div class="form-group"><label>Entidade (Prestador)</label><input id="f-ent" type="text"></div>
+            <div class="form-group"><label>NIF</label><input id="f-nif" type="text"></div>
+            <div class="form-group"><label>Pasta</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <select id="f-pasta" style="flex:1"><option value="">Sem pasta</option></select>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="openModalPastaInline('f-pasta')" style="padding:7px 10px;flex-shrink:0">＋</button>
+              </div>
+            </div>
+            <div class="form-group"><label>Data de Emissão</label><input id="f-emissao" type="text" placeholder="DD/MM/AAAA"></div>
+            <div class="form-group"><label>Data de Vencimento</label><input id="f-venc" type="text" placeholder="DD/MM/AAAA"></div>
+            <div class="form-group full"><label>Descritivo</label><input id="f-desc" type="text"></div>
+            <div class="form-group"><label>Valor Ilíquido (€)</label><input id="f-base" type="text"></div>
+            <div class="form-group"><label>IVA (€)</label><input id="f-iva" type="text"></div>
+            <div class="form-group"><label>Retenção IRS (€)</label><input id="f-retencao" type="text"></div>
+            <div class="form-group"><label>Total Documento (€)</label><input id="f-totalDoc" type="text"></div>
+            <div class="form-group"><label>Total a Pagar (€)</label><input id="f-total" type="text"></div>
+            <div class="form-group"><label>Estado</label>
+              <select id="f-estado"><option value="pendente">Pendente</option><option value="aguarda">Ag. Aprovação</option><option value="aprovada">Aprovada</option><option value="pago">Pago</option></select>
+            </div>
+            <div class="form-group full"><label>Notas</label><textarea id="f-notas"></textarea></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px">
+            <button class="btn btn-primary" onclick="saveFromPDF()">Guardar Fatura</button>
+            <button class="btn btn-ghost" onclick="resetUpload()">Limpar</button>
+          </div>
+        </div>
+      </div>
+      <!-- Direita: pré-visualização -->
+      <div class="upload-modal-right">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Pré-visualização</div>
+        <div class="pdf-preview-wrap">
+          <div id="pdf-preview-empty" class="pdf-preview-empty">
+            <div style="font-size:32px;margin-bottom:8px">📄</div>
+            <div>Faz upload de um PDF<br>para ver a pré-visualização</div>
+          </div>
+          <iframe id="pdf-preview" style="display:none;width:100%;height:500px;border:none;border-radius:4px"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Modal: Introdução manual ── -->
+<div class="modal-overlay" id="modal-manual">
+  <div class="modal modal-wide">
+    <div class="modal-title" id="modal-manual-title">Nova Fatura</div>
+    <input type="hidden" id="m-tipo">
+    <input type="hidden" id="m-edit-id">
+    <div class="form-grid">
+      <div class="form-group"><label>Entidade</label><input id="m-ent" type="text"></div>
+      <div class="form-group"><label>NIF</label><input id="m-nif" type="text"></div>
+      <div class="form-group"><label>Número da Fatura</label><input id="m-num" type="text"></div>
+      <div class="form-group"><label>Pasta</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="m-pasta" style="flex:1"><option value="">Sem pasta</option></select>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openModalPastaInline('m-pasta')" style="padding:7px 10px;flex-shrink:0">＋</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Data de Emissão</label><input id="m-emissao" type="text" placeholder="DD/MM/AAAA"></div>
+      <div class="form-group"><label>Data de Vencimento</label><input id="m-venc" type="text" placeholder="DD/MM/AAAA"></div>
+      <div class="form-group full"><label>Descritivo</label><input id="m-desc" type="text"></div>
+      <div class="form-group"><label>Valor Ilíquido (€)</label><input id="m-base" type="text"></div>
+      <div class="form-group"><label>IVA (€)</label><input id="m-iva" type="text"></div>
+      <div class="form-group"><label>Retenção IRS (€)</label><input id="m-retencao" type="text"></div>
+      <div class="form-group"><label>Total Documento (€)</label><input id="m-totalDoc" type="text"></div>
+      <div class="form-group"><label>Total a Pagar (€)</label><input id="m-total" type="text"></div>
+      <div class="form-group"><label>Estado</label>
+        <select id="m-estado"><option value="pendente">Pendente</option><option value="aguarda">Ag. Aprovação</option><option value="aprovada">Aprovada</option><option value="pago">Pago / Recebido</option></select>
+      </div>
+      <div class="form-group full"><label>Notas</label><textarea id="m-notas"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-manual')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveManual()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Nova pasta ── -->
+<div class="modal-overlay" id="modal-pasta">
+  <div class="modal">
+    <div class="modal-title">Nova Pasta</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nome</label><input id="p-nome" type="text" placeholder="Ex: EDP, Contabilidade"></div>
+      <div class="form-group"><label>Ícone</label>
+        <select id="p-icon"><option>📁</option><option>🏢</option><option>⚡</option><option>💧</option><option>🌐</option><option>🚗</option><option>💼</option><option>🏥</option><option>📦</option><option>🔧</option><option>🎯</option><option>💡</option><option>🏠</option><option>🛒</option><option>📊</option></select>
+      </div>
+      <div class="form-group full"><label>Cor</label><div id="p-cor-opts" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"></div></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pasta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePasta()">Criar Pasta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Workflow de estado ── -->
+<div class="modal-overlay" id="modal-wf">
+  <div class="modal">
+    <div class="modal-title" id="wf-title">Atualizar Estado</div>
+    <input type="hidden" id="wf-id">
+    <input type="hidden" id="wf-tipo">
+    <div class="wf-steps" id="wf-steps"></div>
+    <div id="wf-date-row" style="margin-top:16px;display:none">
+      <div class="form-group"><label>Data de Pagamento / Recebimento</label><input id="wf-date" type="text" placeholder="DD/MM/AAAA"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-wf')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveWF()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Detalhe de fatura ── -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal modal-wide">
+    <div class="modal-title" id="detail-title">Detalhe da Fatura</div>
+    <div id="detail-body"></div>
+    <div id="detail-comprovativo" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Comprovativo de Pagamento</div>
+      <div id="comprovativo-existente" style="display:none;margin-bottom:10px">
+        <a id="comprovativo-link" href="#" target="_blank" class="btn btn-ghost btn-sm">📎 Ver comprovativo</a>
+        <button class="btn btn-danger btn-sm" onclick="removeComprovativo()" style="margin-left:6px">✕ Remover</button>
+      </div>
+      <div id="comprovativo-upload">
+        <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer" class="btn btn-ghost btn-sm">
+          ⬆ Carregar comprovativo (PDF)
+          <input type="file" id="comp-file-inp" accept=".pdf" style="display:none" onchange="uploadComprovativo(this.files[0])">
+        </label>
+        <div class="loading" id="comp-loading" style="display:inline-flex;margin-left:10px"><div class="spinner"></div> A carregar…</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-detail')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+
+<script src="sheets.js"></script>
+<script src="state.js"></script>
+<script src="invoices.js"></script>
+<script src="pdf.js?v=1782480026"></script>
+<script src="render.js"></script>
+<script src="chat.js"></script>
+<script src="config.js"></script>
+
+<script>
+// ── Dropdown logic ─────────────────────────────────────────────────────────
+function toggleDropdown(id) {
+  const menu = document.getElementById(id + '-menu');
+  document.querySelectorAll('.btn-dropdown-menu').forEach(m => { if (m !== menu) m.classList.remove('show'); });
+  menu.classList.toggle('show');
+}
+function closeDropdowns() {
+  document.querySelectorAll('.btn-dropdown-menu').forEach(m => m.classList.remove('show'));
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.btn-dropdown')) closeDropdowns();
+});
+
+// ── Upload modal ────────────────────────────────────────────────────────────
+function openUploadModal(tipo) {
+  document.getElementById('upload-tipo').value = tipo;
+  document.getElementById('upload-modal-title').textContent = tipo === 'cliente' ? 'Carregar Fatura de Cliente' : 'Carregar Fatura de Fornecedor';
+  populatePastaSelect('f-pasta');
+  resetUpload();
+  document.getElementById('modal-upload').classList.add('show');
+}
+function closeUploadModal() {
+  document.getElementById('modal-upload').classList.remove('show');
+  resetUpload();
+}
+
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ const SHEET_PASTAS  = 'Pastas';
 const HEADERS_FATURAS = [
   'id','addedAt','tipo','numero','entidade','nif','emissao','vencimento',
   'descritivo','base','iva','retencao','totalDoc','total','estado',
-  'dataPagamento','pastaId','notas'
+  'dataPagamento','pastaId','notas','comprovavitoUrl','comprovavitoId'
 ];
 const HEADERS_PASTAS = ['id','nome','icon','cor'];
 
@@ -240,4 +240,83 @@ function showSyncStatus(msg) {
   if (!el) return;
   el.textContent = msg;
   setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+}
+
+// ─── Google Drive: upload de ficheiros ────────────────────────────────────────
+const DRIVE_FOLDER_NAME = 'Faturas - Comprovativos';
+let _driveFolderId = null;
+
+async function getDriveFolderId() {
+  if (_driveFolderId) return _driveFolderId;
+  const token = await getSheetsToken();
+  if (!token) return null;
+
+  // Procura pasta existente
+  const search = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
+    { headers: { Authorization: 'Bearer ' + token } }
+  );
+  const data = await search.json();
+  if (data.files && data.files.length > 0) {
+    _driveFolderId = data.files[0].id;
+    return _driveFolderId;
+  }
+
+  // Cria pasta se não existir
+  const create = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+  });
+  const folder = await create.json();
+  _driveFolderId = folder.id;
+  return _driveFolderId;
+}
+
+async function uploadToDrive(file, filename) {
+  const token    = await getSheetsToken();
+  if (!token) throw new Error('Sem autenticação');
+  const folderId = await getDriveFolderId();
+  if (!folderId) throw new Error('Não foi possível criar pasta no Drive');
+
+  // Upload multipart
+  const metadata = JSON.stringify({ name: filename, parents: [folderId] });
+  const boundary = 'faturas_boundary_' + Date.now();
+  const fileData  = await file.arrayBuffer();
+
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
+    `--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`,
+    fileData,
+    `\r\n--${boundary}--`,
+  ]);
+
+  const resp = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+    {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body,
+    }
+  );
+  if (!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || 'Erro Drive'); }
+  const result = await resp.json();
+
+  // Torna o ficheiro público para visualização
+  await fetch(`https://www.googleapis.com/drive/v3/files/${result.id}/permissions`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+  });
+
+  return { id: result.id, url: result.webViewLink };
+}
+
+async function deleteFromDrive(fileId) {
+  const token = await getSheetsToken();
+  if (!token) return;
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + token },
+  });
 }

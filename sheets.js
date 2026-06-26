@@ -1,300 +1,118 @@
-// ─── sheets.js ────────────────────────────────────────────────────────────────
-// Integração com Google Sheets via API REST.
-// Usa JWT assinado com a chave da Service Account para autenticação.
-// Não requer servidor — corre inteiramente no browser.
+// ─── ui.js ────────────────────────────────────────────────────────────────────
+// Toast, modais, alertas de duplicado e indicadores de estado.
 
-const SHEET_ID      = '16nMMi6Nhlxi8IQz2zqFdm226rAfFJwM4Jnnry4cPEQs';
-const SHEET_FATURAS = 'Faturas';
-const SHEET_PASTAS  = 'Pastas';
-
-const HEADERS_FATURAS = [
-  'id','addedAt','tipo','numero','entidade','nif','emissao','vencimento',
-  'descritivo','base','iva','retencao','totalDoc','total','estado',
-  'dataPagamento','pastaId','notas','comprovavitoUrl','comprovavitoId',
-  'faturaUrl','faturaId'
-];
-const HEADERS_PASTAS = ['id','nome','icon','cor'];
-
-let sheetsToken    = null;
-let sheetsTokenExp = 0;
-let syncPending    = false;
-
-// ─── Obter token OAuth via JWT ────────────────────────────────────────────────
-async function getSheetsToken() {
-  if (sheetsToken && Date.now() < sheetsTokenExp - 60000) return sheetsToken;
-  if (!config.sheetsKey) return null;
-
-  try {
-    const key  = JSON.parse(config.sheetsKey);
-    const now  = Math.floor(Date.now() / 1000);
-    const claim = {
-      iss: key.client_email,
-      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive',
-      aud: 'https://oauth2.googleapis.com/token',
-      exp: now + 3600,
-      iat: now,
-    };
-
-    const header  = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    const payload = btoa(JSON.stringify(claim)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    const msg     = header + '.' + payload;
-
-    // Importa a chave privada RSA
-    const pemBody = key.private_key.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
-    const derBuf  = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0));
-    const cryptoKey = await crypto.subtle.importKey(
-      'pkcs8', derBuf,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-      false, ['sign']
-    );
-
-    const sigBuf = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(msg));
-    const sig    = btoa(String.fromCharCode(...new Uint8Array(sigBuf))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
-    const jwt    = msg + '.' + sig;
-
-    // Troca JWT por access token
-    const resp = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
-    });
-    const data = await resp.json();
-    if (!data.access_token) throw new Error('Token inválido: ' + JSON.stringify(data));
-    sheetsToken    = data.access_token;
-    sheetsTokenExp = Date.now() + (data.expires_in * 1000);
-    return sheetsToken;
-  } catch (e) {
-    console.error('Erro ao obter token Sheets:', e);
-    return null;
-  }
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  setTimeout(() => el.classList.remove('show'), 3500);
 }
 
-// ─── Inicializar folhas se não existirem ──────────────────────────────────────
-async function sheetsInit() {
-  const token = await getSheetsToken();
-  if (!token) return;
+// ─── Alerta de duplicado ──────────────────────────────────────────────────────
+// Mais visível que um simples warning — banner animado no topo do modal
+function showDuplicateAlert(msg, type = 'warning') {
+  const el = document.getElementById('dup-warn');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="dup-icon">${type === 'error' ? '🚫' : '⚠️'}</div>
+    <div class="dup-content">
+      <div class="dup-title">${type === 'error' ? 'Campos obrigatórios' : 'Possível Duplicado Detectado'}</div>
+      <div class="dup-msg">${msg || 'Esta fatura pode já existir. Verifica os dados antes de guardar.'}</div>
+    </div>`;
+  el.className = 'dup-warning dup-' + type + ' show';
+  el.style.display = 'flex';
 
-  // Verifica quais folhas existem
-  const r    = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`, { headers: { Authorization: 'Bearer ' + token } });
-  const meta = await r.json();
-  const existing = (meta.sheets || []).map(s => s.properties.title);
-
-  // Cria as folhas que faltam via batchUpdate
-  const toCreate = [];
-  if (!existing.includes(SHEET_FATURAS)) toCreate.push(SHEET_FATURAS);
-  if (!existing.includes(SHEET_PASTAS))  toCreate.push(SHEET_PASTAS);
-
-  if (toCreate.length > 0) {
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requests: toCreate.map(title => ({ addSheet: { properties: { title } } }))
-      }),
-    });
-    console.log('[Sheets] batchUpdate resposta:', JSON.stringify(batchData).slice(0, 300));
-  }
-
-  // Escreve cabeçalhos se as folhas foram criadas agora
-  if (!existing.includes(SHEET_FATURAS)) {
-    await sheetsWrite(SHEET_FATURAS, [HEADERS_FATURAS]);
-  }
-  if (!existing.includes(SHEET_PASTAS)) {
-    await sheetsWrite(SHEET_PASTAS, [HEADERS_PASTAS]);
-  }
+  // Shake animation
+  el.classList.add('dup-shake');
+  setTimeout(() => el.classList.remove('dup-shake'), 600);
 }
 
-// ─── Ler dados da Sheet ───────────────────────────────────────────────────────
-async function sheetsRead(sheet) {
-  const token = await getSheetsToken();
-  if (!token) return null;
-  const r = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheet}`,
-    { headers: { Authorization: 'Bearer ' + token } }
-  );
-  const data = await r.json();
-  return data.values || [];
+function hideDuplicateAlert() {
+  const el = document.getElementById('dup-warn');
+  if (el) { el.style.display = 'none'; el.className = 'dup-warning'; }
 }
 
-// ─── Escrever todos os dados (substitui tudo) ─────────────────────────────────
-async function sheetsWrite(sheet, rows) {
-  const token = await getSheetsToken();
-  if (!token) return;
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheet}?valueInputOption=RAW`,
-    {
-      method: 'PUT',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ range: sheet, majorDimension: 'ROWS', values: rows }),
-    }
-  );
+// ─── Modais ───────────────────────────────────────────────────────────────────
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('show');
 }
 
-// ─── Append linha ─────────────────────────────────────────────────────────────
-async function sheetsAppendRow(sheet, row, token, isHeader = false) {
-  const t = token || await getSheetsToken();
-  if (!t) return;
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheet}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-    {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ range: sheet, majorDimension: 'ROWS', values: [row] }),
-    }
-  );
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('show');
 }
 
-// ─── Converter fatura para linha ──────────────────────────────────────────────
-function invToRow(inv) {
-  return HEADERS_FATURAS.map(h => {
-    const v = inv[h];
-    return v === null || v === undefined ? '' : String(v);
+// Fechar ao clicar fora ou Escape
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.modal-overlay, .upload-modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
   });
-}
-
-function rowToInv(row) {
-  const inv = {};
-  HEADERS_FATURAS.forEach((h, i) => { inv[h] = row[i] || ''; });
-  inv.pastaId = inv.pastaId ? Number(inv.pastaId) : null;
-  return inv;
-}
-
-function pastaToRow(p) {
-  return [String(p.id), p.nome, p.icon, JSON.stringify(p.cor)];
-}
-
-function rowToPasta(row) {
-  try {
-    return { id: Number(row[0]), nome: row[1] || '', icon: row[2] || '📁', cor: JSON.parse(row[3] || '{}') };
-  } catch { return null; }
-}
-
-// ─── Sincronizar: carregar da Sheet ──────────────────────────────────────────
-async function sheetsLoad() {
-  const token = await getSheetsToken();
-  if (!token) { console.error('[Sheets] Falhou a obter token'); return false; }
-
-  try {
-    await sheetsInit();
-
-    const [rowsFat, rowsPas] = await Promise.all([
-      sheetsRead(SHEET_FATURAS),
-      sheetsRead(SHEET_PASTAS),
-    ]);
-
-
-    // Faturas (ignora cabeçalho)
-    if (rowsFat && rowsFat.length > 1) {
-      invoices = rowsFat.slice(1).map(rowToInv).filter(i => i.id);
-      localStorage.setItem('fv_invoices', JSON.stringify(invoices));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.show, .upload-modal-overlay.show')
+        .forEach(m => m.classList.remove('show'));
     }
+  });
+});
 
-    // Pastas (ignora cabeçalho)
-    if (rowsPas && rowsPas.length > 1) {
-      pastas = rowsPas.slice(1).map(rowToPasta).filter(Boolean);
-      localStorage.setItem('fv_pastas', JSON.stringify(pastas));
-    }
-
-    return true;
-  } catch (e) {
-    console.error('Erro ao carregar da Sheet:', e);
-    return false;
-  }
-}
-
-// ─── Sincronizar: guardar na Sheet ────────────────────────────────────────────
-async function sheetsSave() {
-  const token = await getSheetsToken();
-  if (!token) {
-    // Sem Sheets configurado, guarda só em localStorage
-    localStorage.setItem('fv_invoices', JSON.stringify(invoices));
-    localStorage.setItem('fv_pastas',   JSON.stringify(pastas));
-    return;
-  }
-
-  // Guarda localmente primeiro (imediato)
-  localStorage.setItem('fv_invoices', JSON.stringify(invoices));
-  localStorage.setItem('fv_pastas',   JSON.stringify(pastas));
-
-  // Sincroniza com Sheets em background
-  if (syncPending) return;
-  syncPending = true;
-  setTimeout(async () => {
-    try {
-      const rowsFat = [HEADERS_FATURAS, ...invoices.map(invToRow)];
-      const rowsPas = [HEADERS_PASTAS,  ...pastas.map(pastaToRow)];
-      await Promise.all([
-        sheetsWrite(SHEET_FATURAS, rowsFat),
-        sheetsWrite(SHEET_PASTAS,  rowsPas),
-      ]);
-      showSyncStatus('✓ Sincronizado');
-    } catch (e) {
-      console.error('Erro ao guardar na Sheet:', e);
-      showSyncStatus('⚠ Erro ao sincronizar');
-    }
-    syncPending = false;
-  }, 1000); // debounce 1s para não spammar
-}
-
+// ─── Sync status ──────────────────────────────────────────────────────────────
 function showSyncStatus(msg) {
-  let el = document.getElementById('sync-status');
+  const el = document.getElementById('sync-status');
   if (!el) return;
   el.textContent = msg;
   setTimeout(() => { if (el) el.textContent = ''; }, 3000);
 }
 
-// ─── Google Drive: upload de ficheiros ────────────────────────────────────────
-// ID da pasta partilhada no Google Drive pessoal
-const DRIVE_FOLDER_ID = '1ixLRPks-cemMB1f5SfvWp16IamA0FvTO';
-
-async function getDriveFolderId() {
-  return DRIVE_FOLDER_ID;
+// ─── Confirmação personalizada ────────────────────────────────────────────────
+function confirmDialog(msg) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border-radius:10px;padding:28px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+        <div style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--text)">Confirmar</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.5">${msg}</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="conf-no"  class="btn btn-ghost btn-sm">Cancelar</button>
+          <button id="conf-yes" class="btn btn-danger btn-sm">Confirmar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#conf-yes').onclick = () => { document.body.removeChild(overlay); resolve(true); };
+    overlay.querySelector('#conf-no').onclick  = () => { document.body.removeChild(overlay); resolve(false); };
+    overlay.addEventListener('click', e => { if (e.target === overlay) { document.body.removeChild(overlay); resolve(false); } });
+  });
 }
 
-async function uploadToDrive(file, filename) {
-  const token    = await getSheetsToken();
-  if (!token) throw new Error('Sem autenticação');
-  const folderId = await getDriveFolderId();
-  if (!folderId) throw new Error('Não foi possível criar pasta no Drive');
-
-  // Upload multipart
-  const metadata = JSON.stringify({ name: filename, parents: [folderId] });
-  const boundary = 'faturas_boundary_' + Date.now();
-  const fileData  = await file.arrayBuffer();
-
-  const body = new Blob([
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
-    `--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`,
-    fileData,
-    `\r\n--${boundary}--`,
-  ]);
-
-  const resp = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
-    {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` },
-      body,
-    }
-  );
-  if (!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || 'Erro Drive'); }
-  const result = await resp.json();
-
-  // Torna o ficheiro público para visualização
-  await fetch(`https://www.googleapis.com/drive/v3/files/${result.id}/permissions`, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-  });
-
-  return { id: result.id, url: result.webViewLink };
+// ─── Badge de alertas na navegação ───────────────────────────────────────────
+function updateAlertBadge() {
+  const ct = invoices.filter(i =>
+    !isPaid(i) && i.vencimento && daysDiff(i.vencimento) !== null && daysDiff(i.vencimento) <= 7
+  ).length;
+  const badge = document.getElementById('badge-alertas');
+  if (!badge) return;
+  if (ct > 0) { badge.textContent = ct; badge.style.display = ''; }
+  else badge.style.display = 'none';
 }
 
-async function deleteFromDrive(fileId) {
-  const token = await getSheetsToken();
-  if (!token) return;
-  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-    method: 'DELETE',
-    headers: { Authorization: 'Bearer ' + token },
-  });
+// ─── Popula selects de pasta ──────────────────────────────────────────────────
+function populatePastaFilter(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todas as pastas</option>' +
+    pastas.map(p => `<option value="${p.id}">${p.icon} ${p.nome}</option>`).join('');
+  sel.value = cur;
+}
+
+function populatePastaSelect(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Sem pasta</option>' +
+    pastas.map(p => `<option value="${p.id}">${p.icon} ${p.nome}</option>`).join('');
+  sel.value = cur;
 }

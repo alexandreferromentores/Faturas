@@ -1,361 +1,273 @@
-// ─── invoices.js ──────────────────────────────────────────────────────────────
-// Lógica de faturas: criar, editar, apagar, validar e workflow de estados.
+// ─── sheets.js ────────────────────────────────────────────────────────────────
+// Integração com Google Sheets via API REST.
+// Usa JWT assinado com a chave da Service Account para autenticação.
+// Não requer servidor — corre inteiramente no browser.
 
-// ─── Construtor de fatura ─────────────────────────────────────────────────────
-function buildInv(fields) {
-  return {
-    id: Date.now() + Math.random(),
-    addedAt: new Date().toISOString(),
-    ...fields,
-    pastaId: fields.pastaId ? Number(fields.pastaId) : null,
-  };
-}
+const SHEET_ID      = '16nMMi6Nhlxi8IQz2zqFdm226rAfFJwM4Jnnry4cPEQs';
+const SHEET_FATURAS = 'Faturas';
+const SHEET_PASTAS  = 'Pastas';
 
-// ─── Validação ────────────────────────────────────────────────────────────────
-function validateInv(fields) {
-  const erros = [];
-  if (!fields.entidade?.trim()) erros.push('Entidade');
-  if (!fields.numero?.trim())   erros.push('Número de fatura');
-  if (!fields.emissao?.trim())  erros.push('Data de emissão');
-  if (!fields.total?.toString().trim()) erros.push('Total');
-  if (erros.length) {
-    toast('Campos obrigatórios: ' + erros.join(', '), 'error');
-    return false;
-  }
-  return true;
-}
+const HEADERS_FATURAS = [
+  'id','addedAt','tipo','numero','entidade','nif','emissao','vencimento',
+  'descritivo','base','iva','retencao','totalDoc','total','estado',
+  'dataPagamento','pastaId','notas','comprovavitoUrl','comprovavitoId',
+  'faturaUrl','faturaId'
+];
+const HEADERS_PASTAS = ['id','nome','icon','cor'];
 
-// ─── Apagar fatura ────────────────────────────────────────────────────────────
-function delInv(idx) {
-  if (!confirm('Apagar esta fatura?')) return;
-  invoices.splice(idx, 1);
-  save();
-  renderForn();
-  renderCli();
-  toast('Fatura apagada');
-  updateAlertBadge();
-}
+let sheetsToken    = null;
+let sheetsTokenExp = 0;
+let syncPending    = false;
 
-// ─── Modal de introdução manual ───────────────────────────────────────────────
-function openManual(tipo, editIdx) {
-  populatePastaSelect('m-pasta');
-  document.getElementById('m-tipo').value = tipo;
-  document.getElementById('modal-manual-title').textContent =
-    (editIdx !== undefined ? 'Editar' : 'Nova') + ' Fatura — ' +
-    (tipo === 'cliente' ? 'Cliente' : 'Fornecedor');
-
-  if (editIdx !== undefined) {
-    const inv = invoices[editIdx];
-    document.getElementById('m-edit-id').value  = editIdx;
-    document.getElementById('m-ent').value      = inv.entidade   || '';
-    document.getElementById('m-nif').value      = inv.nif        || '';
-    document.getElementById('m-num').value      = inv.numero     || '';
-    document.getElementById('m-emissao').value  = inv.emissao    || '';
-    document.getElementById('m-venc').value     = inv.vencimento || '';
-    document.getElementById('m-desc').value     = inv.descritivo || '';
-    document.getElementById('m-base').value     = inv.base       || '';
-    document.getElementById('m-iva').value      = inv.iva        || '';
-    document.getElementById('m-retencao').value = inv.retencao   || '';
-    document.getElementById('m-totalDoc').value = inv.totalDoc   || '';
-    document.getElementById('m-total').value    = inv.total      || '';
-    document.getElementById('m-estado').value   = inv.estado     || 'pendente';
-    document.getElementById('m-pasta').value    = inv.pastaId    || '';
-    document.getElementById('m-notas').value    = inv.notas      || '';
-  } else {
-    document.getElementById('m-edit-id').value = '';
-    ['m-ent','m-nif','m-num','m-emissao','m-venc','m-desc',
-     'm-base','m-iva','m-retencao','m-totalDoc','m-total','m-notas']
-      .forEach(id => document.getElementById(id).value = '');
-    document.getElementById('m-estado').value = 'pendente';
-    document.getElementById('m-pasta').value  = '';
-  }
-  document.getElementById('modal-manual').classList.add('show');
-}
-
-function editInv(idx) { openManual(invoices[idx].tipo, idx); }
-
-// ─── Guardar fatura manual ────────────────────────────────────────────────────
-function saveManual() {
-  const editIdxRaw = document.getElementById('m-edit-id').value;
-  const tipo = document.getElementById('m-tipo').value;
-  const fields = {
-    tipo,
-    entidade:   document.getElementById('m-ent').value,
-    nif:        document.getElementById('m-nif').value,
-    numero:     document.getElementById('m-num').value,
-    emissao:    document.getElementById('m-emissao').value,
-    vencimento: document.getElementById('m-venc').value,
-    descritivo: document.getElementById('m-desc').value,
-    base:       document.getElementById('m-base').value,
-    iva:        document.getElementById('m-iva').value,
-    retencao:   document.getElementById('m-retencao').value,
-    totalDoc:   document.getElementById('m-totalDoc').value,
-    total:      document.getElementById('m-total').value,
-    estado:     document.getElementById('m-estado').value,
-    pastaId:    document.getElementById('m-pasta').value
-                  ? Number(document.getElementById('m-pasta').value) : null,
-    notas:      document.getElementById('m-notas').value,
-  };
-
-  if (!validateInv(fields)) return;
-
-  if (editIdxRaw !== '') {
-    invoices[parseInt(editIdxRaw)] = { ...invoices[parseInt(editIdxRaw)], ...fields };
-    toast('Fatura atualizada!', 'success');
-  } else {
-    const num = fields.numero.trim().toLowerCase();
-    const ent = fields.entidade.trim().toLowerCase();
-    const dup = num && invoices.find(i =>
-      (i.numero || '').trim().toLowerCase() === num &&
-      (i.entidade || '').trim().toLowerCase() === ent);
-    if (dup && !confirm('Parece um duplicado. Guardar mesmo assim?')) return;
-    invoices.push(buildInv(fields));
-    toast('Fatura adicionada!', 'success');
-  }
-
-  save();
-  closeModal('modal-manual');
-  nav(tipo === 'cliente' ? 'clientes' : 'fornecedores');
-}
-
-// ─── Detalhe de fatura ────────────────────────────────────────────────────────
-function viewInv(idx) {
-  const inv = invoices[idx];
-  const p   = getPasta(inv.pastaId);
-  document.getElementById('detail-title').textContent = inv.entidade || '—';
-  document.getElementById('detail-body').innerHTML = `
-    <div class="form-grid">
-      <div class="form-group"><label>Número</label><div style="font-family:var(--mono);font-size:13px;padding:8px 0">${inv.numero || '—'}</div></div>
-      <div class="form-group"><label>Tipo</label><div style="padding:8px 0">${isClient(inv) ? '👤 Cliente' : '🏢 Fornecedor'}</div></div>
-      <div class="form-group"><label>NIF</label><div style="font-family:var(--mono);font-size:13px;padding:8px 0">${inv.nif || '—'}</div></div>
-      <div class="form-group"><label>Estado</label><div style="padding:8px 0">${estadoBadge(inv)} ${dueBadge(inv)}</div></div>
-      <div class="form-group"><label>Data de Emissão</label><div style="padding:8px 0">${inv.emissao || '—'}</div></div>
-      <div class="form-group"><label>Data de Vencimento</label><div style="padding:8px 0">${inv.vencimento || '—'}</div></div>
-      ${inv.descritivo ? `<div class="form-group full"><label>Descritivo</label><div style="padding:8px 0;font-size:13px;color:var(--text)">${inv.descritivo}</div></div>` : ''}
-      <div class="form-group"><label>Valor Ilíquido</label><div style="font-family:var(--mono);padding:8px 0">${inv.base ? fmt(inv.base) : '—'}</div></div>
-      <div class="form-group"><label>IVA</label><div style="font-family:var(--mono);padding:8px 0">${inv.iva ? fmt(inv.iva) : '—'}</div></div>
-      ${inv.retencao ? `<div class="form-group"><label>Retenção IRS</label><div style="font-family:var(--mono);padding:8px 0">${fmt(inv.retencao)}</div></div>` : ''}
-      ${inv.totalDoc ? `<div class="form-group"><label>Total Documento</label><div style="font-family:var(--mono);padding:8px 0">${fmt(inv.totalDoc)}</div></div>` : ''}
-      <div class="form-group"><label>Total a Pagar</label><div style="font-family:var(--mono);font-size:16px;font-weight:600;color:var(--accent);padding:8px 0">${fmt(inv.total)}</div></div>
-      ${p ? `<div class="form-group"><label>Pasta</label><div style="padding:8px 0"><span class="folder-chip" style="background:${p.cor.bg};color:${p.cor.text};border-color:${p.cor.border}">${p.icon} ${p.nome}</span></div></div>` : ''}
-      ${inv.notas ? `<div class="form-group full"><label>Notas</label><div style="padding:8px 0;font-size:13px;color:var(--muted)">${inv.notas}</div></div>` : ''}
-      ${inv.dataPagamento ? `<div class="form-group"><label>Data de Pagamento</label><div style="padding:8px 0">${inv.dataPagamento}</div></div>` : ''}
-    </div>
-    ${inv.faturaUrl ? `<div style="margin-top:12px;padding:10px 14px;background:var(--accent-light);border:1px solid var(--accent-border);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:500">📄 PDF da Fatura</span><a href="${inv.faturaUrl}" target="_blank" class="btn btn-primary btn-sm">Ver PDF</a></div>` : ''}
-    <div style="display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-      <button class="btn btn-primary btn-sm" onclick="closeModal('modal-detail');openWF(${idx})">⇄ Alterar Estado</button>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-detail');editInv(${idx})">✎ Editar</button>
-      <button class="btn btn-danger btn-sm" onclick="closeModal('modal-detail');delInv(${idx})">✕ Apagar</button>
-    </div>`;
-  document.getElementById('modal-detail').classList.add('show');
-}
-
-// ─── Pastas ───────────────────────────────────────────────────────────────────
-let selectedPastaCor = 0;
-
-// ─── Abrir modal de pasta a partir do formulário de fatura ───────────────────
-// Guarda qual select deve ser actualizado depois de criar a pasta
-let _pastaReturnSelect = null;
-
-function openModalPastaInline(selectId) {
-  _pastaReturnSelect = selectId;
-  openModalPasta();
-}
-
-function openModalPasta() {
-  selectedPastaCor = 0;
-  document.getElementById('p-cor-opts').innerHTML = PASTA_CORES.map((c, i) => `
-    <div onclick="selectCor(${i})" id="cor-opt-${i}"
-      style="width:26px;height:26px;border-radius:50%;background:${c.bg};
-             border:2px solid ${i === 0 ? c.text : c.border};cursor:pointer"
-      title="${c.name}"></div>`).join('');
-  document.getElementById('p-nome').value = '';
-  document.getElementById('modal-pasta').classList.add('show');
-}
-
-function selectCor(i) {
-  selectedPastaCor = i;
-  PASTA_CORES.forEach((c, j) => {
-    const el = document.getElementById('cor-opt-' + j);
-    if (el) el.style.border = '2px solid ' + (j === i ? c.text : c.border);
-  });
-}
-
-function savePasta() {
-  const nome = document.getElementById('p-nome').value.trim();
-  if (!nome) { toast('Preenche o nome da pasta', 'error'); return; }
-  pastas.push({
-    id: Date.now(),
-    nome,
-    icon: document.getElementById('p-icon').value,
-    cor:  PASTA_CORES[selectedPastaCor],
-  });
-  save();
-  closeModal('modal-pasta');
-  renderPastas();
-  ['ff-pasta', 'cf-pasta'].forEach(populatePastaFilter);
-  ['f-pasta',  'm-pasta'].forEach(populatePastaSelect);
-  toast('Pasta criada!', 'success');
-
-  // Se veio de um formulário, selecciona a nova pasta automaticamente
-  if (_pastaReturnSelect) {
-    const newPasta = pastas[pastas.length - 1];
-    const sel = document.getElementById(_pastaReturnSelect);
-    if (sel) sel.value = String(newPasta.id);
-    _pastaReturnSelect = null;
-  }
-}
-
-function delPasta(idx) {
-  if (!confirm(`Apagar pasta "${pastas[idx].nome}"?`)) return;
-  const id = pastas[idx].id;
-  invoices = invoices.map(i => i.pastaId === id ? { ...i, pastaId: null } : i);
-  pastas.splice(idx, 1);
-  save();
-  renderPastas();
-  toast('Pasta apagada');
-}
-
-// ─── Workflow de estados ──────────────────────────────────────────────────────
-const WF_FORN        = ['pendente', 'aguarda', 'aprovada', 'pago'];
-const WF_FORN_LABELS = { pendente: 'Pendente', aguarda: 'Ag. Aprovação', aprovada: 'Aprovada', pago: 'Pago' };
-const WF_CLI         = ['pendente', 'pago'];
-const WF_CLI_LABELS  = { pendente: 'Pendente', pago: 'Recebido' };
-let wfSelected = null;
-
-function openWF(idx) {
-  const inv    = invoices[idx];
-  const isCli  = isClient(inv);
-  const steps  = isCli ? WF_CLI        : WF_FORN;
-  const labels = isCli ? WF_CLI_LABELS : WF_FORN_LABELS;
-  wfSelected   = inv.estado || 'pendente';
-
-  document.getElementById('wf-id').value   = idx;
-  document.getElementById('wf-tipo').value = inv.tipo;
-  document.getElementById('wf-title').textContent = `Estado — ${inv.entidade || ''}`;
-  document.getElementById('wf-steps').innerHTML = steps.map(s =>
-    `<div class="wf-step ${s === wfSelected ? 'active' : ''}" onclick="selectWF('${s}', this)">${labels[s]}</div>`
-  ).join('');
-  document.getElementById('wf-date-row').style.display = wfSelected === 'pago' ? 'block' : 'none';
-  document.getElementById('wf-date').value = today();
-  document.getElementById('modal-wf').classList.add('show');
-}
-
-function selectWF(estado, el) {
-  wfSelected = estado;
-  document.querySelectorAll('.wf-step').forEach(s => s.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('wf-date-row').style.display = estado === 'pago' ? 'block' : 'none';
-}
-
-function saveWF() {
-  const idx = parseInt(document.getElementById('wf-id').value);
-  invoices[idx].estado = wfSelected;
-  if (wfSelected === 'pago') invoices[idx].dataPagamento = document.getElementById('wf-date').value;
-  save();
-  closeModal('modal-wf');
-  renderForn(); renderCli(); renderDashboard(); updateAlertBadge();
-  toast('Estado atualizado!', 'success');
-}
-
-// ─── Comprovativo de pagamento ────────────────────────────────────────────────
-let _currentDetailIdx = null;
-
-// Actualiza o modal de detalhe para mostrar/esconder comprovativo
-function refreshComprovavitoUI(inv) {
-  const existente = document.getElementById('comprovativo-existente');
-  const upload    = document.getElementById('comprovativo-upload');
-  const link      = document.getElementById('comprovativo-link');
-  const loading   = document.getElementById('comp-loading');
-  if (!existente) return;
-  loading.style.display = 'none';
-  if (inv.comprovavitoUrl) {
-    existente.style.display = 'block';
-    upload.style.display    = 'none';
-    link.href               = inv.comprovavitoUrl;
-  } else {
-    existente.style.display = 'none';
-    upload.style.display    = 'block';
-  }
-}
-
-// Override viewInv to track current index and show comprovativo UI
-const _origViewInv = typeof viewInv === 'function' ? viewInv : null;
-
-function viewInv(idx) {
-  _currentDetailIdx = idx;
-  const inv = invoices[idx];
-  const p   = getPasta(inv.pastaId);
-  document.getElementById('detail-title').textContent = inv.entidade || '—';
-  document.getElementById('detail-body').innerHTML = `
-    <div class="form-grid">
-      <div class="form-group"><label>Número</label><div style="font-family:var(--mono);font-size:13px;padding:8px 0">${inv.numero || '—'}</div></div>
-      <div class="form-group"><label>Tipo</label><div style="padding:8px 0">${isClient(inv) ? '👤 Cliente' : '🏢 Fornecedor'}</div></div>
-      <div class="form-group"><label>NIF</label><div style="font-family:var(--mono);font-size:13px;padding:8px 0">${inv.nif || '—'}</div></div>
-      <div class="form-group"><label>Estado</label><div style="padding:8px 0">${estadoBadge(inv)} ${dueBadge(inv)}</div></div>
-      <div class="form-group"><label>Data de Emissão</label><div style="padding:8px 0">${inv.emissao || '—'}</div></div>
-      <div class="form-group"><label>Data de Vencimento</label><div style="padding:8px 0">${inv.vencimento || '—'}</div></div>
-      ${inv.descritivo ? `<div class="form-group full"><label>Descritivo</label><div style="padding:8px 0;font-size:13px">${inv.descritivo}</div></div>` : ''}
-      <div class="form-group"><label>Valor Ilíquido</label><div style="font-family:var(--mono);padding:8px 0">${inv.base ? fmt(inv.base) : '—'}</div></div>
-      <div class="form-group"><label>IVA</label><div style="font-family:var(--mono);padding:8px 0">${inv.iva ? fmt(inv.iva) : '—'}</div></div>
-      ${inv.retencao ? `<div class="form-group"><label>Retenção IRS</label><div style="font-family:var(--mono);padding:8px 0">${fmt(inv.retencao)}</div></div>` : ''}
-      ${inv.totalDoc ? `<div class="form-group"><label>Total Documento</label><div style="font-family:var(--mono);padding:8px 0">${fmt(inv.totalDoc)}</div></div>` : ''}
-      <div class="form-group"><label>Total a Pagar</label><div style="font-family:var(--mono);font-size:16px;font-weight:600;color:var(--accent);padding:8px 0">${fmt(inv.total)}</div></div>
-      ${p ? `<div class="form-group"><label>Pasta</label><div style="padding:8px 0"><span class="folder-chip" style="background:${p.cor.bg};color:${p.cor.text};border-color:${p.cor.border}">${p.icon} ${p.nome}</span></div></div>` : ''}
-      ${inv.notas ? `<div class="form-group full"><label>Notas</label><div style="padding:8px 0;font-size:13px;color:var(--muted)">${inv.notas}</div></div>` : ''}
-      ${inv.dataPagamento ? `<div class="form-group"><label>Data de Pagamento</label><div style="padding:8px 0">${inv.dataPagamento}</div></div>` : ''}
-    </div>
-    ${inv.faturaUrl ? `<div style="margin-top:12px;padding:10px 14px;background:var(--accent-light);border:1px solid var(--accent-border);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:500">📄 PDF da Fatura</span><a href="${inv.faturaUrl}" target="_blank" class="btn btn-primary btn-sm">Ver PDF</a></div>` : ''}
-    <div style="display:flex;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-      <button class="btn btn-primary btn-sm" onclick="closeModal('modal-detail');openWF(${idx})">⇄ Alterar Estado</button>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-detail');editInv(${idx})">✎ Editar</button>
-      <button class="btn btn-danger btn-sm" onclick="closeModal('modal-detail');delInv(${idx})">✕ Apagar</button>
-    </div>`;
-  refreshComprovavitoUI(inv);
-  document.getElementById('modal-detail').classList.add('show');
-}
-
-async function uploadComprovativo(file) {
-  if (!file || _currentDetailIdx === null) return;
-  if (!config.sheetsKey) { toast('Configura o Google Sheets primeiro', 'error'); return; }
-
-  const loading = document.getElementById('comp-loading');
-  const upload  = document.getElementById('comprovativo-upload');
-  loading.style.display = 'inline-flex';
-  upload.style.display  = 'none';
+// ─── Obter token OAuth via JWT ────────────────────────────────────────────────
+async function getSheetsToken() {
+  if (sheetsToken && Date.now() < sheetsTokenExp - 60000) return sheetsToken;
+  if (!config.sheetsKey) return null;
 
   try {
-    const inv      = invoices[_currentDetailIdx];
-    const filename = `${inv.numero || 'fatura'}_${inv.entidade || ''}_comprovativo.pdf`.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
-    const result   = await uploadToDrive(file, filename);
+    const key  = JSON.parse(config.sheetsKey);
+    const now  = Math.floor(Date.now() / 1000);
+    const claim = {
+      iss: key.client_email,
+      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive',
+      aud: 'https://oauth2.googleapis.com/token',
+      exp: now + 3600,
+      iat: now,
+    };
 
-    // Remove ficheiro antigo do Drive se existir
-    if (inv.comprovavitoId) {
-      await deleteFromDrive(inv.comprovavitoId).catch(() => {});
-    }
+    const header  = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const payload = btoa(JSON.stringify(claim)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const msg     = header + '.' + payload;
 
-    invoices[_currentDetailIdx].comprovavitoUrl = result.url;
-    invoices[_currentDetailIdx].comprovavitoId  = result.id;
-    save();
-    refreshComprovavitoUI(invoices[_currentDetailIdx]);
-    toast('Comprovativo carregado!', 'success');
+    // Importa a chave privada RSA
+    const pemBody = key.private_key.replace(/-----[^-]+-----/g, '').replace(/\s/g, '');
+    const derBuf  = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0));
+    const cryptoKey = await crypto.subtle.importKey(
+      'pkcs8', derBuf,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false, ['sign']
+    );
+
+    const sigBuf = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(msg));
+    const sig    = btoa(String.fromCharCode(...new Uint8Array(sigBuf))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    const jwt    = msg + '.' + sig;
+
+    // Troca JWT por access token
+    const resp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    });
+    const data = await resp.json();
+    if (!data.access_token) throw new Error('Token inválido: ' + JSON.stringify(data));
+    sheetsToken    = data.access_token;
+    sheetsTokenExp = Date.now() + (data.expires_in * 1000);
+    return sheetsToken;
   } catch (e) {
-    loading.style.display = 'none';
-    upload.style.display  = 'block';
-    toast('Erro ao carregar: ' + e.message, 'error');
+    console.error('Erro ao obter token Sheets:', e);
+    return null;
   }
 }
 
-async function removeComprovativo() {
-  if (_currentDetailIdx === null) return;
-  if (!confirm('Remover comprovativo?')) return;
-  const inv = invoices[_currentDetailIdx];
-  if (inv.comprovavitoId) {
-    await deleteFromDrive(inv.comprovavitoId).catch(() => {});
+// ─── Inicializar folhas se não existirem ──────────────────────────────────────
+async function sheetsInit() {
+  const token = await getSheetsToken();
+  if (!token) return;
+
+  // Verifica quais folhas existem
+  const r    = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`, { headers: { Authorization: 'Bearer ' + token } });
+  const meta = await r.json();
+  const existing = (meta.sheets || []).map(s => s.properties.title);
+
+  // Cria as folhas que faltam via batchUpdate
+  const toCreate = [];
+  if (!existing.includes(SHEET_FATURAS)) toCreate.push(SHEET_FATURAS);
+  if (!existing.includes(SHEET_PASTAS))  toCreate.push(SHEET_PASTAS);
+
+  if (toCreate.length > 0) {
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: toCreate.map(title => ({ addSheet: { properties: { title } } }))
+      }),
+    });
+    console.log('[Sheets] batchUpdate resposta:', JSON.stringify(batchData).slice(0, 300));
   }
-  delete invoices[_currentDetailIdx].comprovavitoUrl;
-  delete invoices[_currentDetailIdx].comprovavitoId;
-  save();
-  refreshComprovavitoUI(invoices[_currentDetailIdx]);
-  toast('Comprovativo removido');
+
+  // Escreve cabeçalhos se as folhas foram criadas agora
+  if (!existing.includes(SHEET_FATURAS)) {
+    await sheetsWrite(SHEET_FATURAS, [HEADERS_FATURAS]);
+  }
+  if (!existing.includes(SHEET_PASTAS)) {
+    await sheetsWrite(SHEET_PASTAS, [HEADERS_PASTAS]);
+  }
+}
+
+// ─── Ler dados da Sheet ───────────────────────────────────────────────────────
+async function sheetsRead(sheet) {
+  const token = await getSheetsToken();
+  if (!token) return null;
+  const r = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheet}`,
+    { headers: { Authorization: 'Bearer ' + token } }
+  );
+  const data = await r.json();
+  return data.values || [];
+}
+
+// ─── Escrever todos os dados (substitui tudo) ─────────────────────────────────
+async function sheetsWrite(sheet, rows) {
+  const token = await getSheetsToken();
+  if (!token) return;
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheet}?valueInputOption=RAW`,
+    {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ range: sheet, majorDimension: 'ROWS', values: rows }),
+    }
+  );
+}
+
+// ─── Append linha ─────────────────────────────────────────────────────────────
+async function sheetsAppendRow(sheet, row, token, isHeader = false) {
+  const t = token || await getSheetsToken();
+  if (!t) return;
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheet}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ range: sheet, majorDimension: 'ROWS', values: [row] }),
+    }
+  );
+}
+
+// ─── Converter fatura para linha ──────────────────────────────────────────────
+function invToRow(inv) {
+  return HEADERS_FATURAS.map(h => {
+    const v = inv[h];
+    return v === null || v === undefined ? '' : String(v);
+  });
+}
+
+function rowToInv(row) {
+  const inv = {};
+  HEADERS_FATURAS.forEach((h, i) => { inv[h] = row[i] || ''; });
+  inv.pastaId = inv.pastaId ? Number(inv.pastaId) : null;
+  return inv;
+}
+
+function pastaToRow(p) {
+  return [String(p.id), p.nome, p.icon, JSON.stringify(p.cor)];
+}
+
+function rowToPasta(row) {
+  try {
+    return { id: Number(row[0]), nome: row[1] || '', icon: row[2] || '📁', cor: JSON.parse(row[3] || '{}') };
+  } catch { return null; }
+}
+
+// ─── Sincronizar: carregar da Sheet ──────────────────────────────────────────
+async function sheetsLoad() {
+  const token = await getSheetsToken();
+  if (!token) { console.error('[Sheets] Falhou a obter token'); return false; }
+
+  try {
+    await sheetsInit();
+
+    const [rowsFat, rowsPas] = await Promise.all([
+      sheetsRead(SHEET_FATURAS),
+      sheetsRead(SHEET_PASTAS),
+    ]);
+
+
+    // Faturas (ignora cabeçalho)
+    if (rowsFat && rowsFat.length > 1) {
+      invoices = rowsFat.slice(1).map(rowToInv).filter(i => i.id);
+      localStorage.setItem('fv_invoices', JSON.stringify(invoices));
+    }
+
+    // Pastas (ignora cabeçalho)
+    if (rowsPas && rowsPas.length > 1) {
+      pastas = rowsPas.slice(1).map(rowToPasta).filter(Boolean);
+      localStorage.setItem('fv_pastas', JSON.stringify(pastas));
+    }
+
+    return true;
+  } catch (e) {
+    console.error('Erro ao carregar da Sheet:', e);
+    return false;
+  }
+}
+
+// ─── Sincronizar: guardar na Sheet ────────────────────────────────────────────
+async function sheetsSave() {
+  const token = await getSheetsToken();
+  if (!token) {
+    // Sem Sheets configurado, guarda só em localStorage
+    localStorage.setItem('fv_invoices', JSON.stringify(invoices));
+    localStorage.setItem('fv_pastas',   JSON.stringify(pastas));
+    return;
+  }
+
+  // Guarda localmente primeiro (imediato)
+  localStorage.setItem('fv_invoices', JSON.stringify(invoices));
+  localStorage.setItem('fv_pastas',   JSON.stringify(pastas));
+
+  // Sincroniza com Sheets em background
+  if (syncPending) return;
+  syncPending = true;
+  setTimeout(async () => {
+    try {
+      const rowsFat = [HEADERS_FATURAS, ...invoices.map(invToRow)];
+      const rowsPas = [HEADERS_PASTAS,  ...pastas.map(pastaToRow)];
+      await Promise.all([
+        sheetsWrite(SHEET_FATURAS, rowsFat),
+        sheetsWrite(SHEET_PASTAS,  rowsPas),
+      ]);
+      showSyncStatus('✓ Sincronizado');
+    } catch (e) {
+      console.error('Erro ao guardar na Sheet:', e);
+      showSyncStatus('⚠ Erro ao sincronizar');
+    }
+    syncPending = false;
+  }, 1000); // debounce 1s para não spammar
+}
+
+function showSyncStatus(msg) {
+  let el = document.getElementById('sync-status');
+  if (!el) return;
+  el.textContent = msg;
+  setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+}
+// ─── Apagar linha da Sheet ────────────────────────────────────────────────────
+async function sheetsDeleteRow(invId) {
+  const token = await getSheetsToken();
+  if (!token) return;
+  try {
+    // Re-read to find row index
+    const rows = await sheetsRead(SHEET_FATURAS);
+    if (!rows || rows.length < 2) return;
+    const rowIdx = rows.findIndex((r, i) => i > 0 && r[0] == invId);
+    if (rowIdx === -1) return;
+
+    // Get spreadsheet metadata to find sheet ID
+    const meta = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    }).then(r => r.json());
+    const sheetId = meta.sheets?.find(s => s.properties.title === SHEET_FATURAS)?.properties?.sheetId;
+    if (sheetId === undefined) return;
+
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{ deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: rowIdx, endIndex: rowIdx + 1 }
+        }}]
+      })
+    });
+  } catch(e) { console.warn('sheetsDeleteRow:', e.message); }
 }

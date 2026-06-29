@@ -593,16 +593,67 @@ textarea { resize: vertical; min-height: 64px; }
     <!-- EMPRESA -->
     <div id="page-empresa" class="page">
       <div class="page-header">
-        <div><div class="page-title">Perfil da Empresa</div><div class="page-sub">Dados da tua empresa para relatórios</div></div>
-        <button class="btn btn-primary" onclick="saveEmpresa()">Guardar</button>
+        <div><div class="page-title">Perfil da Empresa</div><div class="page-sub">Dados da tua empresa para relatórios e faturas</div></div>
+        <button class="btn btn-primary" onclick="saveEmpresa()">💾 Guardar</button>
       </div>
-      <div class="card">
+
+      <!-- Identidade -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Identidade</div>
+        <div style="display:flex;gap:20px;align-items:flex-start">
+          <!-- Logo upload -->
+          <div style="flex-shrink:0;text-align:center">
+            <div id="emp-logo-preview" style="width:80px;height:80px;border-radius:var(--r);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;background:var(--bg);margin-bottom:6px" onclick="document.getElementById('emp-logo-inp').click()">🏢</div>
+            <input type="file" id="emp-logo-inp" accept="image/*" style="display:none" onchange="loadLogo(this)">
+            <div style="font-size:10px;color:var(--muted)">Logótipo</div>
+          </div>
+          <div class="form-grid" style="flex:1">
+            <div class="form-group"><label>Nome da Empresa</label><input id="emp-nome" type="text" placeholder="Ex: Mentores & Tutores"></div>
+            <div class="form-group"><label>NIF / NIPC</label><input id="emp-nif" type="text" placeholder="123456789"></div>
+            <div class="form-group"><label>Email</label><input id="emp-email" type="email" placeholder="email@empresa.pt"></div>
+            <div class="form-group"><label>Telefone</label><input id="emp-tel" type="text" placeholder="+351 ..."></div>
+            <div class="form-group full"><label>Morada</label><input id="emp-morada" type="text" placeholder="Rua, nº, Cidade, Código Postal"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dados fiscais -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Dados Fiscais</div>
         <div class="form-grid">
-          <div class="form-group"><label>Nome da Empresa</label><input id="emp-nome" type="text" placeholder="Ex: Mentores & Tutores"></div>
-          <div class="form-group"><label>NIF</label><input id="emp-nif" type="text" placeholder="123456789"></div>
-          <div class="form-group"><label>Email</label><input id="emp-email" type="email" placeholder="email@empresa.pt"></div>
-          <div class="form-group"><label>Telefone</label><input id="emp-tel" type="text" placeholder="+351 ..."></div>
-          <div class="form-group full"><label>Morada</label><input id="emp-morada" type="text" placeholder="Rua, Cidade, Código Postal"></div>
+          <div class="form-group">
+            <label>Regime de IVA</label>
+            <select id="emp-iva-regime">
+              <option value="">Seleccionar...</option>
+              <option value="normal">Regime Normal</option>
+              <option value="isento">Isento (art. 53.º CIVA)</option>
+              <option value="retalhistas">Pequenos Retalhistas</option>
+              <option value="margem">Regime da Margem</option>
+            </select>
+          </div>
+          <div class="form-group"><label>CAE (Código de Actividade)</label><input id="emp-cae" type="text" placeholder="Ex: 85592"></div>
+          <div class="form-group"><label>IBAN</label><input id="emp-iban" type="text" placeholder="PT50 0000 0000 0000 0000 000 0"></div>
+          <div class="form-group"><label>Ano Fiscal</label><input id="emp-ano-fiscal" type="text" placeholder="Ex: 2025"></div>
+        </div>
+      </div>
+
+      <!-- Contabilista -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Contabilista</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Nome</label><input id="emp-cont-nome" type="text" placeholder="Nome do contabilista"></div>
+          <div class="form-group"><label>Email</label><input id="emp-cont-email" type="email" placeholder="contabilista@email.pt"></div>
+          <div class="form-group"><label>Telefone</label><input id="emp-cont-tel" type="text" placeholder="+351 ..."></div>
+          <div class="form-group"><label>NIF do Contabilista</label><input id="emp-cont-nif" type="text" placeholder="123456789"></div>
+        </div>
+      </div>
+
+      <!-- Notas internas -->
+      <div class="card">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Notas Internas</div>
+        <div class="form-group">
+          <label>Notas</label>
+          <textarea id="emp-notas" placeholder="Anotações internas sobre a empresa, contratos, observações..." style="min-height:100px"></textarea>
         </div>
       </div>
     </div>
@@ -2717,24 +2768,62 @@ function toggleTheme() {
 let empresa = JSON.parse(localStorage.getItem('fv_empresa') || '{}');
 
 function loadEmpresa() {
-  document.getElementById('emp-nome').value   = empresa.nome   || '';
-  document.getElementById('emp-nif').value    = empresa.nif    || '';
-  document.getElementById('emp-email').value  = empresa.email  || '';
-  document.getElementById('emp-tel').value    = empresa.tel    || '';
-  document.getElementById('emp-morada').value = empresa.morada || '';
+  document.getElementById('emp-nome').value        = empresa.nome        || '';
+  document.getElementById('emp-nif').value         = empresa.nif         || '';
+  document.getElementById('emp-email').value       = empresa.email       || '';
+  document.getElementById('emp-tel').value         = empresa.tel         || '';
+  document.getElementById('emp-morada').value      = empresa.morada      || '';
+  document.getElementById('emp-iva-regime').value  = empresa.ivaRegime   || '';
+  document.getElementById('emp-cae').value         = empresa.cae         || '';
+  document.getElementById('emp-iban').value        = empresa.iban        || '';
+  document.getElementById('emp-ano-fiscal').value  = empresa.anoFiscal   || new Date().getFullYear();
+  document.getElementById('emp-cont-nome').value   = empresa.contNome    || '';
+  document.getElementById('emp-cont-email').value  = empresa.contEmail   || '';
+  document.getElementById('emp-cont-tel').value    = empresa.contTel     || '';
+  document.getElementById('emp-cont-nif').value    = empresa.contNif     || '';
+  document.getElementById('emp-notas').value       = empresa.notas       || '';
+
+  // Logo
+  if (empresa.logo) {
+    const prev = document.getElementById('emp-logo-preview');
+    if (prev) prev.innerHTML = `<img src="${empresa.logo}" style="width:100%;height:100%;object-fit:contain;border-radius:4px">`;
+  }
 }
 
 function saveEmpresa() {
   empresa = {
-    nome:   document.getElementById('emp-nome').value.trim(),
-    nif:    document.getElementById('emp-nif').value.trim(),
-    email:  document.getElementById('emp-email').value.trim(),
-    tel:    document.getElementById('emp-tel').value.trim(),
-    morada: document.getElementById('emp-morada').value.trim(),
+    nome:       document.getElementById('emp-nome').value.trim(),
+    nif:        document.getElementById('emp-nif').value.trim(),
+    email:      document.getElementById('emp-email').value.trim(),
+    tel:        document.getElementById('emp-tel').value.trim(),
+    morada:     document.getElementById('emp-morada').value.trim(),
+    ivaRegime:  document.getElementById('emp-iva-regime').value,
+    cae:        document.getElementById('emp-cae').value.trim(),
+    iban:       document.getElementById('emp-iban').value.trim(),
+    anoFiscal:  document.getElementById('emp-ano-fiscal').value.trim(),
+    contNome:   document.getElementById('emp-cont-nome').value.trim(),
+    contEmail:  document.getElementById('emp-cont-email').value.trim(),
+    contTel:    document.getElementById('emp-cont-tel').value.trim(),
+    contNif:    document.getElementById('emp-cont-nif').value.trim(),
+    notas:      document.getElementById('emp-notas').value.trim(),
+    logo:       empresa.logo || '',
   };
   localStorage.setItem('fv_empresa', JSON.stringify(empresa));
   updateCompanyBadge();
   toast('Perfil da empresa guardado!', 'success');
+}
+
+function loadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    empresa.logo = e.target.result;
+    const prev = document.getElementById('emp-logo-preview');
+    if (prev) prev.innerHTML = `<img src="${empresa.logo}" style="width:100%;height:100%;object-fit:contain;border-radius:4px">`;
+    toast('Logo carregado — guarda para confirmar', '');
+  };
+  reader.readAsDataURL(file);
 }
 
 function updateCompanyBadge() {
@@ -2908,11 +2997,20 @@ function gerarRelatorioPDF() {
   const cRows = fCli.map(i => `<tr><td>${i.entidade||''}</td><td>${i.numero||''}</td><td>${i.emissao||''}</td><td style="text-align:right">${fmt(i.total)}</td><td style="color:${isPaid(i)?'#22C55E':'#F59E0B'}">${isPaid(i)?'Recebido':'Pendente'}</td></tr>`).join('');
   const now = new Date().toLocaleDateString('pt-PT');
 
+  const ivaLabel = {'normal':'Regime Normal','isento':'Isento (art. 53º CIVA)','retalhistas':'Pequenos Retalhistas','margem':'Regime da Margem'}[empresa.ivaRegime||''] || '';
   const htmlReport = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Resumo ${mesNome}</title>
-<style>body{font-family:Arial,sans-serif;padding:32px;color:#111;font-size:13px}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:24px 0 8px;color:#1A3A5C;border-bottom:2px solid #1A3A5C;padding-bottom:4px}p{color:#666;font-size:12px;margin:0 0 16px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#1A3A5C;color:#fff;padding:7px 10px;text-align:left;font-size:11px}td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px}tr:nth-child(even)td{background:#f9f9f9}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}.kpi{background:#f4f4f8;border-radius:8px;padding:12px;text-align:center}.kpi-val{font-size:16px;font-weight:800;color:#1A3A5C}.kpi-label{font-size:10px;color:#888;text-transform:uppercase;margin-top:4px}.footer{margin-top:32px;font-size:11px;color:#aaa;text-align:center}</style>
+<style>body{font-family:Arial,sans-serif;padding:32px;color:#111;font-size:13px}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:24px 0 8px;color:#1A3A5C;border-bottom:2px solid #1A3A5C;padding-bottom:4px}p{color:#666;font-size:12px;margin:0 0 16px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#1A3A5C;color:#fff;padding:7px 10px;text-align:left;font-size:11px}td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px}tr:nth-child(even)td{background:#f9f9f9}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}.kpi{background:#f4f4f8;border-radius:8px;padding:12px;text-align:center}.kpi-val{font-size:16px;font-weight:800;color:#1A3A5C}.kpi-label{font-size:10px;color:#888;text-transform:uppercase;margin-top:4px}.footer{margin-top:32px;font-size:11px;color:#aaa;text-align:center}.company-header{display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #1A3A5C}.company-logo{width:60px;height:60px;object-fit:contain}</style>
 </head><body>
-<h1>Resumo Mensal — ${mesNome}</h1>
-<p>${empresa.nome||''}${empresa.nif?' · NIF '+empresa.nif:''} · Gerado em ${now}</p>
+<div class="company-header">
+  ${empresa.logo ? `<img src="${empresa.logo}" class="company-logo">` : ''}
+  <div>
+    <h1 style="margin:0 0 2px">${empresa.nome || 'Relatório Mensal'}</h1>
+    <p style="margin:0">${[empresa.nif ? 'NIF '+empresa.nif : '', empresa.cae ? 'CAE '+empresa.cae : '', ivaLabel].filter(Boolean).join(' · ')}</p>
+    <p style="margin:2px 0 0">${[empresa.morada, empresa.email, empresa.tel].filter(Boolean).join(' · ')}</p>
+  </div>
+</div>
+<h2 style="margin-top:0">Resumo — ${mesNome}</h2>
+<p>Gerado em ${now}${empresa.contNome ? ' · Contabilista: '+empresa.contNome : ''}</p>
 <div class="kpis">
   <div class="kpi"><div class="kpi-val">${fmt(totalFat)}</div><div class="kpi-label">Faturado</div></div>
   <div class="kpi"><div class="kpi-val">${fmt(totalPago)}</div><div class="kpi-label">Pago</div></div>

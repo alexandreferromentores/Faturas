@@ -286,6 +286,91 @@ textarea { resize: vertical; min-height: 64px; }
 .btn-dropdown-item .ddi-label { font-weight:500; color:var(--text); }
 .btn-dropdown-item .ddi-sub { font-size:11px; color:var(--muted); }
 .btn-dropdown-divider { border:none; border-top:1px solid var(--border); margin:4px 0; }
+
+/* ── Dark mode ── */
+[data-theme="dark"] {
+  --bg: #12121A;
+  --surface: #1E1E2A;
+  --border: #2E2E40;
+  --text: #F0EFFE;
+  --muted: #9B9BBF;
+  --accent: #7C3AED;
+  --accent-light: rgba(124,58,237,.15);
+  --accent-border: rgba(124,58,237,.4);
+  --green: #4ADE80;
+  --green-bg: rgba(34,197,94,.15);
+  --green-border: rgba(34,197,94,.3);
+  --red: #F87171;
+  --red-bg: rgba(239,68,68,.15);
+  --red-border: rgba(239,68,68,.3);
+  --amber: #FCD34D;
+  --amber-bg: rgba(245,158,11,.15);
+  --amber-border: rgba(245,158,11,.3);
+  --cyan: #22D3EE;
+  --cyan-bg: rgba(34,211,238,.15);
+  --cyan-border: rgba(34,211,238,.3);
+  --purple: #C084FC;
+  --purple-bg: rgba(192,132,252,.15);
+  --purple-border: rgba(192,132,252,.3);
+}
+[data-theme="dark"] nav { background: #1A1A28; }
+[data-theme="dark"] tbody tr:hover { background: #252533; }
+[data-theme="dark"] .upload-zone { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .upload-zone:hover { background: var(--accent-light); }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: #252533; color: var(--text); border-color: var(--border); }
+[data-theme="dark"] .fsel, [data-theme="dark"] .finp { background: #252533; color: var(--text); }
+
+/* ── Dark mode toggle ── */
+.theme-toggle { background:none; border:none; cursor:pointer; padding:8px; border-radius:var(--r); color:rgba(255,255,255,.6); font-size:16px; transition:all .15s; }
+.theme-toggle:hover { background:rgba(255,255,255,.1); color:#fff; }
+
+/* ── Calendar ── */
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:12px; }
+.cal-header { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:6px; }
+.cal-day-name { text-align:center; font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; padding:4px 0; }
+.cal-cell { min-height:64px; border-radius:var(--r); border:1px solid var(--border); background:var(--surface); padding:5px 6px; cursor:default; }
+.cal-cell.has-items { border-color:var(--red-border); background:var(--red-bg); cursor:pointer; }
+.cal-cell.has-items:hover { opacity:.85; }
+.cal-cell.today { border-color:var(--accent); background:var(--accent-light); }
+.cal-cell.empty { background:transparent; border:none; }
+.cal-day-num { font-size:11px; font-weight:600; color:var(--text); }
+.cal-cell.today .cal-day-num { color:var(--accent); font-weight:800; }
+.cal-inv-chip { margin-top:3px; background:var(--red); color:#fff; border-radius:3px; padding:1px 4px; font-size:9px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cal-inv-chip.client { background:var(--cyan); }
+.cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.cal-nav-btn { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:5px 12px; cursor:pointer; font-size:13px; font-family:var(--sans); color:var(--text); transition:all .15s; }
+.cal-nav-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ── Company profile ── */
+.company-badge { display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(255,255,255,.08); border-radius:var(--r); margin:8px 10px; }
+.company-name { font-size:11px; font-weight:600; color:rgba(255,255,255,.8); }
+.company-nif { font-size:10px; color:rgba(255,255,255,.4); font-family:var(--mono); }
+
+/* ── Health score ── */
+.health-score { display:flex; align-items:center; gap:10px; padding:14px 18px; border-radius:var(--r); margin-bottom:20px; }
+.health-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+.health-label { font-size:13px; font-weight:600; }
+.health-sub { font-size:11px; color:var(--muted); }
+
+/* ── Onboarding ── */
+.onboarding-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:8000; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+.onboarding-overlay.show { display:flex; }
+.onboarding-card { background:var(--surface); border-radius:16px; padding:36px; max-width:440px; width:90%; text-align:center; border:1px solid var(--accent-border); }
+.onboarding-icon { font-size:52px; margin-bottom:16px; }
+.onboarding-dots { display:flex; justify-content:center; gap:6px; margin-bottom:20px; }
+.onboarding-dot { height:8px; border-radius:99px; background:var(--border); transition:all .3s; }
+.onboarding-dot.active { background:var(--accent); width:24px; }
+.onboarding-dot:not(.active) { width:8px; }
+
+/* ── Upload progress ── */
+.upload-progress { display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--accent-border); border-radius:12px; padding:14px 20px; z-index:9999; box-shadow:0 8px 32px rgba(0,0,0,.15); min-width:300px; }
+.upload-progress.show { display:block; }
+.progress-bar-track { height:6px; border-radius:99px; background:var(--border); overflow:hidden; margin:8px 0; }
+.progress-bar-fill { height:100%; border-radius:99px; background:var(--accent); transition:width .3s; }
+
+/* ── Monthly PDF report button ── */
+.report-month-select { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+
 </style>
 </head>
 <body>
@@ -298,6 +383,12 @@ textarea { resize: vertical; min-height: 64px; }
       <span>faturas/</span>
       <small>gestão de pagamentos</small>
       <div id="sync-status" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;min-height:14px"></div>
+    </div>
+    <div id="company-badge" class="company-badge" style="display:none">
+      <div>
+        <div class="company-name" id="company-name-nav">—</div>
+        <div class="company-nif" id="company-nif-nav">—</div>
+      </div>
     </div>
     <div class="nav-items">
       <div class="nav-group">Geral</div>
@@ -313,9 +404,13 @@ textarea { resize: vertical; min-height: 64px; }
       <div class="nav-group">Organização</div>
       <div class="nav-item" onclick="nav('pastas')"><span class="ic">📁</span> Pastas</div>
       <div class="nav-item" onclick="nav('assistente')"><span class="ic">✦</span> Assistente IA</div>
+      <div class="nav-item" onclick="nav('empresa')"><span class="ic">🏢</span> Empresa</div>
     </div>
     <div class="nav-bottom">
-      <div class="nav-settings" onclick="nav('config')">⚙ Configuração</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 10px 8px">
+        <div class="nav-settings" onclick="nav('config')" style="flex:1">⚙ Configuração</div>
+        <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Dark/Light mode">🌙</button>
+      </div>
     </div>
   </nav>
 
@@ -348,9 +443,23 @@ textarea { resize: vertical; min-height: 64px; }
         <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:14px">📊 Últimos 6 Meses</div><canvas id="chart-mensal" height="160"></canvas></div>
         <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:14px">🗂 Distribuição por Pasta</div><canvas id="chart-pastas" height="160"></canvas><div id="chart-pastas-legend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
       </div>
-      <div class="two-col">
+      <!-- Health Score -->
+      <div id="health-score-bar" class="health-score" style="margin-bottom:20px"></div>
+
+      <div class="two-col" style="margin-bottom:20px">
         <div class="card"><div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Faturas Recentes</div><div id="dash-recent"></div></div>
         <div class="card"><div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Vencimentos Próximos</div><div id="dash-venc"></div></div>
+      </div>
+
+      <!-- Calendar -->
+      <div class="card">
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="calPrev()">← Anterior</button>
+          <div style="font-size:14px;font-weight:600" id="cal-title">—</div>
+          <button class="cal-nav-btn" onclick="calNext()">Próximo →</button>
+        </div>
+        <div class="cal-header" id="cal-header"></div>
+        <div class="cal-grid" id="cal-grid"></div>
       </div>
     </div>
 
@@ -480,6 +589,23 @@ textarea { resize: vertical; min-height: 64px; }
       </div>
     </div>
 
+    <!-- EMPRESA -->
+    <div id="page-empresa" class="page">
+      <div class="page-header">
+        <div><div class="page-title">Perfil da Empresa</div><div class="page-sub">Dados da tua empresa para relatórios</div></div>
+        <button class="btn btn-primary" onclick="saveEmpresa()">Guardar</button>
+      </div>
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group"><label>Nome da Empresa</label><input id="emp-nome" type="text" placeholder="Ex: Mentores & Tutores"></div>
+          <div class="form-group"><label>NIF</label><input id="emp-nif" type="text" placeholder="123456789"></div>
+          <div class="form-group"><label>Email</label><input id="emp-email" type="email" placeholder="email@empresa.pt"></div>
+          <div class="form-group"><label>Telefone</label><input id="emp-tel" type="text" placeholder="+351 ..."></div>
+          <div class="form-group full"><label>Morada</label><input id="emp-morada" type="text" placeholder="Rua, Cidade, Código Postal"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- CONFIGURAÇÃO -->
     <div id="page-config" class="page">
       <div class="page-header"><div><div class="page-title">Configuração</div><div class="page-sub">API Key e dados</div></div></div>
@@ -504,7 +630,7 @@ textarea { resize: vertical; min-height: 64px; }
           <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Exportar ou limpar os dados guardados localmente.</p>
           <div style="display:flex;gap:10px">
             <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
-            <button class="btn btn-ghost btn-sm" onclick="exportRelatorio()">📊 Relatório Mensal</button>
+            <button class="btn btn-ghost btn-sm" onclick="openRelatorioModal()">📊 Relatório Mensal PDF</button>
             <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑 Apagar tudo</button>
           </div>
         </div>
@@ -530,7 +656,7 @@ textarea { resize: vertical; min-height: 64px; }
           <div style="font-size:13px;font-weight:500">Arrasta o PDF ou clica para selecionar</div>
           <div style="font-size:11px;color:var(--muted);margin-top:3px">Apenas ficheiros PDF</div>
         </div>
-        <input type="file" id="file-inp" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+        <input type="file" id="file-inp" accept=".pdf" style="display:none" multiple onchange="handleFiles(this.files)">
         <div class="loading" id="loading-ext"><div class="spinner"></div> A extrair dados com IA…</div>
         <div id="dup-warn" class="dup-warning" style="display:none">⚠️ Possível duplicado detectado.</div>
         <div id="extracted-box" style="display:none">
@@ -676,6 +802,44 @@ textarea { resize: vertical; min-height: 64px; }
   </div>
 </div>
 
+<!-- Onboarding -->
+<div class="onboarding-overlay" id="onboarding-overlay">
+  <div class="onboarding-card">
+    <div class="onboarding-icon" id="ob-icon">⚙️</div>
+    <div class="onboarding-dots" id="ob-dots"></div>
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:10px" id="ob-title">Bem-vindo!</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6" id="ob-desc">Vamos configurar a tua app em 5 passos simples.</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-ghost btn-sm" onclick="skipOnboarding()">Saltar</button>
+      <button class="btn btn-primary btn-sm" onclick="nextOnboarding()" id="ob-btn">Próximo →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Relatório Modal -->
+<div class="modal-overlay" id="modal-relatorio">
+  <div class="modal">
+    <div class="modal-title">📊 Relatório Mensal PDF</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Selecciona o mês para gerar o relatório.</p>
+    <div class="report-month-select">
+      <select id="rel-mes" class="fsel">
+        <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+        <option value="2">Março</option><option value="3">Abril</option>
+        <option value="4">Maio</option><option value="5">Junho</option>
+        <option value="6">Julho</option><option value="7">Agosto</option>
+        <option value="8">Setembro</option><option value="9">Outubro</option>
+        <option value="10">Novembro</option><option value="11">Dezembro</option>
+      </select>
+      <select id="rel-ano" class="fsel"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-relatorio')">Cancelar</button>
+      <button class="btn btn-primary" onclick="gerarRelatorioPDF()">Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="upload-progress" id="upload-progress"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:600" id="up-label">A processar...</span><span style="font-size:12px;font-weight:700;color:var(--accent)" id="up-pct">0%</span></div><div class="progress-bar-track"><div class="progress-bar-fill" id="up-bar" style="width:0%"></div></div><div style="font-size:11px;color:var(--muted);margin-top:4px" id="up-name"></div></div>
 <div class="toast" id="toast"></div>
 
 
@@ -1620,6 +1784,15 @@ async function handleFile(file) {
     }
 
     fillExtracted(data);
+    // Auto-match pasta
+    if (data.entidade || data.descritivo) {
+      const matched = autoMatchPasta(data.entidade || '', data.descritivo || '');
+      if (matched) {
+        const sel = document.getElementById('f-pasta');
+        if (sel) { populatePastaSelect('f-pasta'); sel.value = String(matched.id); }
+        toast('Pasta sugerida: ' + matched.icon + ' ' + matched.nome, '');
+      }
+    }
     checkDuplicate(data);
     document.getElementById('extracted-box').style.display = 'block';
   } catch (e) {
@@ -1862,6 +2035,8 @@ function renderDashboard() {
   renderCashFlow();
   renderChartMensal();
   renderChartPasstas();
+  renderHealthScore();
+  renderCalendar();
 
   // Recentes
   const recent = [...invoices].sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || '')).slice(0, 5);
@@ -2443,7 +2618,7 @@ function exportRelatorio() {
 // ─── nav.js ───────────────────────────────────────────────────────────────────
 // Navegação com persistência via hash URL (#fornecedores, #dashboard, etc.)
 
-const VALID_PAGES = ['dashboard','alertas','fornecedores','clientes','pesquisa','pastas','assistente','config'];
+const VALID_PAGES = ['dashboard','alertas','fornecedores','clientes','pesquisa','pastas','assistente','config','empresa'];
 
 function nav(name) {
   if (!VALID_PAGES.includes(name)) name = 'dashboard';
@@ -2463,7 +2638,7 @@ function nav(name) {
 
   // Callbacks por página
   const callbacks = {
-    dashboard:    () => renderDashboard(),
+    dashboard:    () => { renderDashboard(); renderCalendar(); },
     fornecedores: () => { populatePastaFilter('ff-pasta'); renderForn(); },
     clientes:     () => { populatePastaFilter('cf-pasta'); renderCli(); },
     pastas:       () => renderPastas(),
@@ -2471,6 +2646,7 @@ function nav(name) {
     config:       () => loadConfig(),
     assistente:   () => initChat(),
     pesquisa:     () => renderPesquisa(),
+    empresa:      () => loadEmpresa(),
   };
   callbacks[name]?.();
   updateAlertBadge();
@@ -2513,6 +2689,375 @@ function closeUploadModal() {
   document.getElementById('modal-upload').classList.remove('show');
   resetUpload();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── DARK MODE ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const newTheme = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('fv_theme', newTheme);
+  document.getElementById('theme-btn').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem('fv_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── EMPRESA ────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+let empresa = JSON.parse(localStorage.getItem('fv_empresa') || '{}');
+
+function loadEmpresa() {
+  document.getElementById('emp-nome').value   = empresa.nome   || '';
+  document.getElementById('emp-nif').value    = empresa.nif    || '';
+  document.getElementById('emp-email').value  = empresa.email  || '';
+  document.getElementById('emp-tel').value    = empresa.tel    || '';
+  document.getElementById('emp-morada').value = empresa.morada || '';
+}
+
+function saveEmpresa() {
+  empresa = {
+    nome:   document.getElementById('emp-nome').value.trim(),
+    nif:    document.getElementById('emp-nif').value.trim(),
+    email:  document.getElementById('emp-email').value.trim(),
+    tel:    document.getElementById('emp-tel').value.trim(),
+    morada: document.getElementById('emp-morada').value.trim(),
+  };
+  localStorage.setItem('fv_empresa', JSON.stringify(empresa));
+  updateCompanyBadge();
+  toast('Perfil da empresa guardado!', 'success');
+}
+
+function updateCompanyBadge() {
+  const badge = document.getElementById('company-badge');
+  const nameEl = document.getElementById('company-name-nav');
+  const nifEl  = document.getElementById('company-nif-nav');
+  if (!badge) return;
+  if (empresa.nome) {
+    badge.style.display = 'flex';
+    nameEl.textContent  = empresa.nome.slice(0, 24) + (empresa.nome.length > 24 ? '…' : '');
+    nifEl.textContent   = empresa.nif ? 'NIF ' + empresa.nif : '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── AUTO-ASSOCIAÇÃO DE PASTA ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+function autoMatchPasta(entidade, descritivo) {
+  if (!pastas.length) return null;
+  const hay = (entidade + ' ' + descritivo).toLowerCase();
+  let best = null, bestScore = 0;
+  for (const p of pastas) {
+    const words = p.nome.toLowerCase().split(/[\s\-_/]+/).filter(w => w.length > 2);
+    let score = 0;
+    for (const w of words) { if (hay.includes(w)) score += w.length * 2; }
+    if (score > bestScore) { bestScore = score; best = p; }
+  }
+  return bestScore >= 4 ? best : null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── CALENDÁRIO ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DAY_NAMES   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+
+function renderCalendar() {
+  const titleEl  = document.getElementById('cal-title');
+  const headerEl = document.getElementById('cal-header');
+  const gridEl   = document.getElementById('cal-grid');
+  if (!titleEl || !headerEl || !gridEl) return;
+
+  titleEl.textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
+
+  headerEl.innerHTML = DAY_NAMES.map(d =>
+    `<div class="cal-day-name">${d}</div>`
+  ).join('');
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const offset   = firstDay === 0 ? 6 : firstDay - 1;
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today    = new Date();
+
+  // Build map of due dates
+  const dueMap = {};
+  invoices.filter(i => !isPaid(i) && i.vencimento).forEach(inv => {
+    const d = parseDate(inv.vencimento);
+    if (!d || d.getFullYear() !== calYear || d.getMonth() !== calMonth) return;
+    const key = d.getDate();
+    if (!dueMap[key]) dueMap[key] = [];
+    dueMap[key].push(inv);
+  });
+
+  let cells = '';
+  for (let i = 0; i < offset; i++) cells += '<div class="cal-cell empty"></div>';
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const isToday = day === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear();
+    const items   = dueMap[day] || [];
+    const hasItems = items.length > 0;
+    const classes = ['cal-cell', isToday ? 'today' : '', hasItems ? 'has-items' : ''].filter(Boolean).join(' ');
+    const chips   = items.slice(0, 2).map(i =>
+      `<div class="cal-inv-chip ${isClient(i) ? 'client' : ''}">${(i.entidade || '').slice(0, 12)}</div>`
+    ).join('');
+    const more = items.length > 2 ? `<div style="font-size:9px;color:var(--red);font-weight:700;margin-top:2px">+${items.length - 2}</div>` : '';
+    cells += `<div class="${classes}">
+      <div class="cal-day-num">${day}</div>
+      ${chips}${more}
+    </div>`;
+  }
+
+  gridEl.innerHTML = cells;
+}
+
+function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
+function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── HEALTH SCORE ────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderHealthScore() {
+  const el = document.getElementById('health-score-bar');
+  if (!el || !invoices.length) { if (el) el.style.display = 'none'; return; }
+
+  const total    = invoices.reduce((s, i) => s + toNum(i.total), 0);
+  const vencidas = invoices.filter(isOverdue).reduce((s, i) => s + toNum(i.total), 0);
+  const pendentes = invoices.filter(i => !isPaid(i) && !isOverdue(i)).reduce((s, i) => s + toNum(i.total), 0);
+
+  const overdueRatio  = total > 0 ? vencidas / total : 0;
+  const pendingRatio  = total > 0 ? pendentes / total : 0;
+
+  let score, color, bg, border, label, sub;
+  if (overdueRatio > 0.3) {
+    score = 'Crítico'; color = 'var(--red)'; bg = 'var(--red-bg)'; border = 'var(--red-border)';
+    sub = `${fmt(vencidas)} em faturas vencidas (${Math.round(overdueRatio*100)}% do total)`;
+  } else if (overdueRatio > 0.1 || pendingRatio > 0.5) {
+    score = 'Atenção'; color = 'var(--amber)'; bg = 'var(--amber-bg)'; border = 'var(--amber-border)';
+    sub = overdueRatio > 0.1 ? `${fmt(vencidas)} em faturas vencidas` : `${fmt(pendentes)} pendente de pagamento`;
+  } else {
+    score = 'Saudável'; color = 'var(--green)'; bg = 'var(--green-bg)'; border = 'var(--green-border)';
+    sub = 'Situação financeira sob controlo';
+  }
+
+  el.style.cssText = `display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:var(--r);background:${bg};border:1px solid ${border};margin-bottom:20px`;
+  el.innerHTML = `
+    <div style="width:12px;height:12px;border-radius:50%;background:${color};flex-shrink:0"></div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:${color}">Saúde Financeira: ${score}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${sub}</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── RELATÓRIO MENSAL PDF ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+function openRelatorioModal() {
+  const now = new Date();
+  const selMes = document.getElementById('rel-mes');
+  const selAno = document.getElementById('rel-ano');
+  if (!selMes || !selAno) return;
+  selMes.value = now.getMonth();
+
+  // Populate years
+  const years = [...new Set(invoices.map(i => { const p = (i.emissao||'').split('/'); return p[2]; }).filter(Boolean))];
+  if (!years.includes(String(now.getFullYear()))) years.push(String(now.getFullYear()));
+  years.sort().reverse();
+  selAno.innerHTML = years.map(y => `<option value="${y}" ${y == now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
+
+  openModal('modal-relatorio');
+}
+
+function gerarRelatorioPDF() {
+  const mes = parseInt(document.getElementById('rel-mes').value);
+  const ano = parseInt(document.getElementById('rel-ano').value);
+  const mesNome = MONTH_NAMES[mes] + ' ' + ano;
+  const mesKey  = `${ano}-${String(mes+1).padStart(2,'0')}`;
+
+  const fInvs = invoices.filter(i => !isClient(i)).filter(i => {
+    const p = (i.emissao||'').split('/'); return p.length >= 3 && `${p[2]}-${p[1]}` === mesKey;
+  });
+  const fCli = invoices.filter(isClient).filter(i => {
+    const p = (i.emissao||'').split('/'); return p.length >= 3 && `${p[2]}-${p[1]}` === mesKey;
+  });
+
+  const totalFat  = fInvs.reduce((s,i) => s + toNum(i.total), 0);
+  const totalPago = fInvs.filter(isPaid).reduce((s,i) => s + toNum(i.total), 0);
+  const totalPend = fInvs.filter(i => !isPaid(i)).reduce((s,i) => s + toNum(i.total), 0);
+  const totalEmit = fCli.reduce((s,i) => s + toNum(i.total), 0);
+  const totalRec  = fCli.filter(isPaid).reduce((s,i) => s + toNum(i.total), 0);
+
+  const byPasta = {};
+  fInvs.forEach(i => { const p = getPasta(i.pastaId); const k = p ? p.nome : 'Sem pasta'; byPasta[k] = (byPasta[k]||0) + toNum(i.total); });
+  const topPastas = Object.entries(byPasta).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+  const fRows = fInvs.map(i => `<tr><td>${i.entidade||''}</td><td>${i.numero||''}</td><td>${i.emissao||''}</td><td style="text-align:right">${fmt(i.total)}</td><td style="color:${isPaid(i)?'#22C55E':'#F59E0B'}">${isPaid(i)?'Pago':'Pendente'}</td></tr>`).join('');
+  const cRows = fCli.map(i => `<tr><td>${i.entidade||''}</td><td>${i.numero||''}</td><td>${i.emissao||''}</td><td style="text-align:right">${fmt(i.total)}</td><td style="color:${isPaid(i)?'#22C55E':'#F59E0B'}">${isPaid(i)?'Recebido':'Pendente'}</td></tr>`).join('');
+  const now = new Date().toLocaleDateString('pt-PT');
+
+  const htmlReport = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Resumo ${mesNome}</title>
+<style>body{font-family:Arial,sans-serif;padding:32px;color:#111;font-size:13px}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:24px 0 8px;color:#1A3A5C;border-bottom:2px solid #1A3A5C;padding-bottom:4px}p{color:#666;font-size:12px;margin:0 0 16px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#1A3A5C;color:#fff;padding:7px 10px;text-align:left;font-size:11px}td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px}tr:nth-child(even)td{background:#f9f9f9}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}.kpi{background:#f4f4f8;border-radius:8px;padding:12px;text-align:center}.kpi-val{font-size:16px;font-weight:800;color:#1A3A5C}.kpi-label{font-size:10px;color:#888;text-transform:uppercase;margin-top:4px}.footer{margin-top:32px;font-size:11px;color:#aaa;text-align:center}</style>
+</head><body>
+<h1>Resumo Mensal — ${mesNome}</h1>
+<p>${empresa.nome||''}${empresa.nif?' · NIF '+empresa.nif:''} · Gerado em ${now}</p>
+<div class="kpis">
+  <div class="kpi"><div class="kpi-val">${fmt(totalFat)}</div><div class="kpi-label">Faturado</div></div>
+  <div class="kpi"><div class="kpi-val">${fmt(totalPago)}</div><div class="kpi-label">Pago</div></div>
+  <div class="kpi"><div class="kpi-val">${fmt(totalPend)}</div><div class="kpi-label">Pendente</div></div>
+  <div class="kpi"><div class="kpi-val">${fmt(totalEmit)}</div><div class="kpi-label">Emitido</div></div>
+  <div class="kpi"><div class="kpi-val">${fmt(totalRec)}</div><div class="kpi-label">Recebido</div></div>
+</div>
+${topPastas.length > 0 ? `<h2>Gastos por Pasta</h2><table><thead><tr><th>Pasta</th><th style="text-align:right">Total</th></tr></thead><tbody>${topPastas.map(([k,v]) => `<tr><td>${k}</td><td style="text-align:right">${fmt(v)}</td></tr>`).join('')}</tbody></table>` : ''}
+${fInvs.length > 0 ? `<h2>Faturas de Fornecedor (${fInvs.length})</h2><table><thead><tr><th>Fornecedor</th><th>Nº Fatura</th><th>Data</th><th style="text-align:right">Valor</th><th>Estado</th></tr></thead><tbody>${fRows}</tbody></table>` : ''}
+${fCli.length > 0 ? `<h2>Faturas de Cliente (${fCli.length})</h2><table><thead><tr><th>Cliente</th><th>Nº Fatura</th><th>Data</th><th style="text-align:right">Valor</th><th>Estado</th></tr></thead><tbody>${cRows}</tbody></table>` : ''}
+<div class="footer">Faturas App · ${now}</div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(htmlReport);
+  w.document.close();
+  setTimeout(() => w.print(), 600);
+  closeModal('modal-relatorio');
+  toast('A abrir relatório para impressão/PDF...', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── UPLOAD EM LOTE ──────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+async function handleFiles(files) {
+  if (!files || files.length === 0) return;
+  if (files.length === 1) { handleFile(files[0]); return; }
+
+  // Multiple files — batch process
+  const tipo = document.getElementById('upload-tipo')?.value || 'fornecedor';
+  const prog = document.getElementById('upload-progress');
+  const bar  = document.getElementById('up-bar');
+  const pct  = document.getElementById('up-pct');
+  const lbl  = document.getElementById('up-label');
+  const nameEl = document.getElementById('up-name');
+
+  if (prog) prog.classList.add('show');
+  let processed = 0;
+
+  for (const file of Array.from(files)) {
+    if (file.type !== 'application/pdf') continue;
+    if (lbl) lbl.textContent = `A processar ${processed + 1} de ${files.length}`;
+    if (nameEl) nameEl.textContent = '📄 ' + file.name;
+
+    try {
+      const text = await readPDFText(file);
+      const data = parseReciboVerde(text);
+
+      // Auto-match pasta
+      const pasta = autoMatchPasta(data.entidade || '', data.descritivo || '');
+      const inv = buildInv({
+        tipo,
+        numero:     data.numero     || '',
+        entidade:   data.entidade   || '',
+        nif:        data.nif        || '',
+        emissao:    data.emissao    || '',
+        vencimento: data.vencimento || '',
+        descritivo: data.descritivo || '',
+        base:       data.base       || '',
+        iva:        data.iva        || '',
+        retencao:   data.retencao   || '',
+        totalDoc:   data.totalDoc   || '',
+        total:      data.total      || '',
+        estado:     'pendente',
+        pastaId:    pasta ? pasta.id : null,
+      });
+
+      // Upload PDF to Drive
+      if (config.sheetsKey) {
+        try {
+          const filename = `${(data.numero||'fatura').replace(/[^a-zA-Z0-9_-]/g,'_')}_fatura.pdf`;
+          const result = await uploadToDrive(file, filename);
+          inv.faturaUrl = result.url;
+          inv.faturaId  = result.id;
+        } catch(e) { console.warn('Drive upload failed:', e.message); }
+      }
+
+      invoices.push(inv);
+    } catch(e) { console.warn('Failed to process', file.name, e.message); }
+
+    processed++;
+    const p = Math.round((processed / files.length) * 100);
+    if (bar) bar.style.width = p + '%';
+    if (pct) pct.textContent = p + '%';
+  }
+
+  save();
+  if (prog) { setTimeout(() => prog.classList.remove('show'), 1500); }
+  closeModal('modal-upload');
+  toast(`${processed} fatura${processed !== 1 ? 's' : ''} importada${processed !== 1 ? 's' : ''}!`, 'success');
+  nav(tipo === 'cliente' ? 'clientes' : 'fornecedores');
+  updateAlertBadge();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── ONBOARDING ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+const OB_STEPS = [
+  { icon: '🏢', title: 'Define a tua empresa',    desc: 'Vai a "Empresa" no menu e preenche o NIF, nome e email. Estes dados aparecem nos relatórios.' },
+  { icon: '📁', title: 'Cria pastas',              desc: 'No separador Pastas, cria categorias como "EDP", "Contabilidade". As faturas são associadas automaticamente.' },
+  { icon: '⬆',  title: 'Carrega faturas',          desc: 'Em Fornecedores ou Clientes, usa o botão "Carregar". Podes carregar múltiplos PDFs de uma vez.' },
+  { icon: '⚙',  title: 'Configura o Google Sheets', desc: 'Em Configuração, cola o JSON da Service Account para guardar os dados na cloud.' },
+  { icon: '✦',  title: 'Usa o Assistente IA',      desc: 'O Assistente responde perguntas sobre cash flow, faturas em atraso, vencimentos e muito mais.' },
+];
+let obStep = 0;
+
+function startOnboarding() {
+  if (localStorage.getItem('fv_ob_done')) return;
+  obStep = 0;
+  renderObStep();
+  document.getElementById('onboarding-overlay').classList.add('show');
+}
+
+function renderObStep() {
+  const s = OB_STEPS[obStep];
+  document.getElementById('ob-icon').textContent  = s.icon;
+  document.getElementById('ob-title').textContent = s.title;
+  document.getElementById('ob-desc').textContent  = s.desc;
+  document.getElementById('ob-btn').textContent   = obStep === OB_STEPS.length - 1 ? 'Começar ✓' : 'Próximo →';
+  document.getElementById('ob-dots').innerHTML    = OB_STEPS.map((_, i) =>
+    `<div class="onboarding-dot ${i === obStep ? 'active' : ''}"></div>`
+  ).join('');
+}
+
+function nextOnboarding() {
+  obStep++;
+  if (obStep >= OB_STEPS.length) { skipOnboarding(); return; }
+  renderObStep();
+}
+
+function skipOnboarding() {
+  localStorage.setItem('fv_ob_done', '1');
+  document.getElementById('onboarding-overlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── INICIALIZAÇÃO ───────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  updateCompanyBadge();
+  // Start onboarding for new users
+  if (!localStorage.getItem('fv_ob_done') && invoices.length === 0) {
+    setTimeout(startOnboarding, 800);
+  }
+});
+
 </script>
 </body>
 </html>

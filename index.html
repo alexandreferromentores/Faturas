@@ -588,6 +588,118 @@ textarea { resize: vertical; min-height: 64px; }
 .pdf-preview-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 400px; }
 .pdf-preview-wrap iframe { width: 100%; height: 100%; min-height: 380px; border: none; border-radius: var(--r); }
 .pdf-preview-empty { text-align: center; color: var(--muted); font-size: 13px; }
+
+/* ══════════════════════════════════════════════════════
+   GRUPO 1 — Animações, transições, skeleton, contadores
+   ══════════════════════════════════════════════════════ */
+
+/* ── Transições de página ── */
+.page { animation: none; }
+.page.active { animation: pageFadeIn .22s ease; }
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Skeleton loading ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface-2) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--r);
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-row { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.skeleton-row .sk-badge { width: 70px; height: 22px; border-radius: 99px; }
+.skeleton-row .sk-text  { height: 14px; border-radius: 4px; }
+.skeleton-row .sk-sm    { width: 80px; }
+.skeleton-row .sk-md    { width: 140px; }
+.skeleton-row .sk-lg    { width: 200px; }
+.skeleton-row .sk-xl    { flex: 1; }
+
+/* ── Métricas animadas ── */
+.metric-value { transition: color .3s; }
+.metric-animated { animation: metricPop .4s cubic-bezier(.34,1.56,.64,1); }
+@keyframes metricPop {
+  0%   { transform: scale(.9); opacity: 0; }
+  100% { transform: scale(1);  opacity: 1; }
+}
+
+/* ── Cards com hover lift ── */
+.metric, .kpi, .folder-card {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.metric:hover, .kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Barra de progresso cash flow ── */
+.cf-bar-wrap { margin-top: 8px; }
+.cf-bar-track { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; margin: 4px 0; }
+.cf-bar-fill  { height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+.cf-bar-pago  { background: var(--green); }
+.cf-bar-pend  { background: var(--amber); }
+
+/* ── Tabela rows ── */
+tbody tr {
+  transition: background .12s, transform .12s;
+}
+tbody tr:hover {
+  transform: translateX(2px);
+}
+
+/* ── Toast melhorado ── */
+.toast {
+  transition: all .35s cubic-bezier(.34,1.56,.64,1);
+}
+
+/* ── Botões com ripple ── */
+.btn { position: relative; overflow: hidden; }
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.15);
+  opacity: 0;
+  transition: opacity .2s;
+  border-radius: inherit;
+}
+.btn:active::after { opacity: 1; }
+
+/* ── Nav item ── */
+.nav-item {
+  transition: background .15s, color .15s, padding-left .15s;
+}
+.nav-item.active {
+  padding-left: 16px;
+}
+
+/* ── Badge pulse para alertas ── */
+.nav-badge.red {
+  animation: badgePulse 2s infinite;
+}
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180,35,24,.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(180,35,24,0); }
+}
+
+/* ── Folder card hover ── */
+.folder-card {
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.folder-card:hover {
+  transform: translateY(-3px) scale(1.01);
+}
+
+/* ── Spinner mais suave ── */
+.spinner {
+  border-top-color: var(--accent);
+  animation: spin .6s cubic-bezier(.4,0,.6,1) infinite;
+}
 </style>
 </head>
 <body>
@@ -1115,23 +1227,20 @@ textarea { resize: vertical; min-height: 64px; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <!-- PDF.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<!-- Chart.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<!-- PDF.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
 <!-- App scripts -->
-<script src="sheets.js?v=1782749124"></script>
-<script src="drive.js?v=1782749124"></script>
-<script src="state.js?v=1782749124"></script>
-<script src="ui.js?v=1782749124"></script>
-<script src="invoices.js?v=1782749124"></script>
-<script src="pdf.js?v=1782749124"></script>
-<script src="render.js?v=1782749124"></script>
-<script src="chat.js?v=1782749124"></script>
-<script src="config.js?v=1782749124"></script>
-<script src="nav.js?v=1782749124"></script>
-<script src="app.js?v=1782749124"></script>
+<script src="sheets.js?v=1782772557"></script>
+<script src="drive.js?v=1782772557"></script>
+<script src="state.js?v=1782772557"></script>
+<script src="ui.js?v=1782772557"></script>
+<script src="invoices.js?v=1782772557"></script>
+<script src="pdf.js?v=1782772557"></script>
+<script src="render.js?v=1782772557"></script>
+<script src="chat.js?v=1782772557"></script>
+<script src="config.js?v=1782772557"></script>
+<script src="nav.js?v=1782772557"></script>
+<script src="app.js?v=1782772557"></script>
+<script src="animations.js?v=1782772557"></script>
 </body>
 </html>

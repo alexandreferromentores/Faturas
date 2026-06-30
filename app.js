@@ -66,7 +66,6 @@ function loadEmpresa() {
   document.getElementById('emp-cont-nif').value    = empresa.contNif     || '';
   document.getElementById('emp-notas').value       = empresa.notas       || '';
 
-  // Logo
   if (empresa.logo) {
     const prev = document.getElementById('emp-logo-preview');
     if (prev) prev.innerHTML = `<img src="${empresa.logo}" style="width:100%;height:100%;object-fit:contain;border-radius:4px">`;
@@ -155,17 +154,13 @@ function renderCalendar() {
   if (!titleEl || !headerEl || !gridEl) return;
 
   titleEl.textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
-
-  headerEl.innerHTML = DAY_NAMES.map(d =>
-    `<div class="cal-day-name">${d}</div>`
-  ).join('');
+  headerEl.innerHTML = DAY_NAMES.map(d => `<div class="cal-day-name">${d}</div>`).join('');
 
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const offset   = firstDay === 0 ? 6 : firstDay - 1;
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const today    = new Date();
 
-  // Build map of due dates
   const dueMap = {};
   invoices.filter(i => !isPaid(i) && i.vencimento).forEach(inv => {
     const d = parseDate(inv.vencimento);
@@ -183,14 +178,9 @@ function renderCalendar() {
     const items   = dueMap[day] || [];
     const hasItems = items.length > 0;
     const classes = ['cal-cell', isToday ? 'today' : '', hasItems ? 'has-items' : ''].filter(Boolean).join(' ');
-    const chips   = items.slice(0, 2).map(i =>
-      `<div class="cal-inv-chip ${isClient(i) ? 'client' : ''}">${(i.entidade || '').slice(0, 12)}</div>`
-    ).join('');
+    const chips   = items.slice(0, 2).map(i => `<div class="cal-inv-chip ${isClient(i) ? 'client' : ''}">${(i.entidade || '').slice(0, 12)}</div>`).join('');
     const more = items.length > 2 ? `<div style="font-size:9px;color:var(--red);font-weight:700;margin-top:2px">+${items.length - 2}</div>` : '';
-    cells += `<div class="${classes}">
-      <div class="cal-day-num">${day}</div>
-      ${chips}${more}
-    </div>`;
+    cells += `<div class="${classes}"><div class="cal-day-num">${day}</div>${chips}${more}</div>`;
   }
 
   gridEl.innerHTML = cells;
@@ -210,10 +200,10 @@ function renderHealthScore() {
   const vencidas = invoices.filter(isOverdue).reduce((s, i) => s + toNum(i.total), 0);
   const pendentes = invoices.filter(i => !isPaid(i) && !isOverdue(i)).reduce((s, i) => s + toNum(i.total), 0);
 
-  const overdueRatio  = total > 0 ? vencidas / total : 0;
-  const pendingRatio  = total > 0 ? pendentes / total : 0;
+  const overdueRatio = total > 0 ? vencidas / total : 0;
+  const pendingRatio = total > 0 ? pendentes / total : 0;
 
-  let score, color, bg, border, label, sub;
+  let score, color, bg, border, sub;
   if (overdueRatio > 0.3) {
     score = 'Crítico'; color = 'var(--red)'; bg = 'var(--red-bg)'; border = 'var(--red-border)';
     sub = `${fmt(vencidas)} em faturas vencidas (${Math.round(overdueRatio*100)}% do total)`;
@@ -244,7 +234,6 @@ function openRelatorioModal() {
   if (!selMes || !selAno) return;
   selMes.value = now.getMonth();
 
-  // Populate years
   const years = [...new Set(invoices.map(i => { const p = (i.emissao||'').split('/'); return p[2]; }).filter(Boolean))];
   if (!years.includes(String(now.getFullYear()))) years.push(String(now.getFullYear()));
   years.sort().reverse();
@@ -322,7 +311,6 @@ async function handleFiles(files) {
   if (!files || files.length === 0) return;
   if (files.length === 1) { handleFile(files[0]); return; }
 
-  // Multiple files — batch process
   const tipo = document.getElementById('upload-tipo')?.value || 'fornecedor';
   const prog = document.getElementById('upload-progress');
   const bar  = document.getElementById('up-bar');
@@ -341,8 +329,6 @@ async function handleFiles(files) {
     try {
       const text = await readPDFText(file);
       const data = parseReciboVerde(text);
-
-      // Auto-match pasta
       const pasta = autoMatchPasta(data.entidade || '', data.descritivo || '');
       const inv = buildInv({
         tipo,
@@ -361,7 +347,6 @@ async function handleFiles(files) {
         pastaId:    pasta ? pasta.id : null,
       });
 
-      // Upload PDF to Drive
       if (config.sheetsKey) {
         try {
           const filename = `${(data.numero||'fatura').replace(/[^a-zA-Z0-9_-]/g,'_')}_fatura.pdf`;
@@ -413,9 +398,7 @@ function renderObStep() {
   document.getElementById('ob-title').textContent = s.title;
   document.getElementById('ob-desc').textContent  = s.desc;
   document.getElementById('ob-btn').textContent   = obStep === OB_STEPS.length - 1 ? 'Começar ✓' : 'Próximo →';
-  document.getElementById('ob-dots').innerHTML    = OB_STEPS.map((_, i) =>
-    `<div class="onboarding-dot ${i === obStep ? 'active' : ''}"></div>`
-  ).join('');
+  document.getElementById('ob-dots').innerHTML    = OB_STEPS.map((_, i) => `<div class="onboarding-dot ${i === obStep ? 'active' : ''}"></div>`).join('');
 }
 
 function nextOnboarding() {
@@ -434,7 +417,6 @@ function skipOnboarding() {
 // ═══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   updateCompanyBadge();
-  // Start onboarding for new users
   if (!localStorage.getItem('fv_ob_done') && invoices.length === 0) {
     setTimeout(startOnboarding, 800);
   }

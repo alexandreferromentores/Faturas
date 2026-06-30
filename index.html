@@ -415,8 +415,9 @@ textarea { resize: vertical; min-height: 64px; }
 .folder-card .fc-icon  { font-size: 26px; margin-bottom: 10px; }
 .folder-card .fc-name  { font-size: 13.5px; font-weight: 600; color: var(--text); }
 .folder-card .fc-count { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
-.folder-card .fc-del   { position: absolute; top: 10px; right: 10px; display: none; }
-.folder-card:hover .fc-del { display: block; }
+.folder-card .fc-actions { display: none; }
+.folder-card:hover .fc-actions { display: flex; }
+.folder-card { cursor: pointer; }
 
 /* ── Linha de alerta ── */
 .alert-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
@@ -912,9 +913,31 @@ tbody tr:hover {
 
     <!-- PASTAS -->
     <div id="page-pastas" class="page">
-      <div class="page-header"><div><div class="page-title">Pastas</div><div class="page-sub">Organiza as faturas por categoria</div></div><button class="btn btn-primary" onclick="openModalPasta()">＋ Nova Pasta</button></div>
-      <div id="pasta-grid" class="folder-grid"></div>
-      <div id="pasta-empty" class="empty" style="display:none"><div class="empty-icon">📁</div><h3>Sem pastas criadas</h3><p>Cria categorias como "EDP", "Contabilidade".</p></div>
+      <div id="pastas-list-view">
+        <div class="page-header"><div><div class="page-title">Pastas</div><div class="page-sub">Organiza as faturas por categoria</div></div><button class="btn btn-primary" onclick="openModalPasta()">＋ Nova Pasta</button></div>
+        <div id="pasta-grid" class="folder-grid"></div>
+        <div id="pasta-empty" class="empty" style="display:none"><div class="empty-icon">📁</div><h3>Sem pastas criadas</h3><p>Cria categorias como "EDP", "Contabilidade".</p></div>
+      </div>
+      <div id="pastas-detail-view" style="display:none">
+        <div class="page-header">
+          <div>
+            <button class="btn btn-ghost btn-sm" onclick="closePastaDetail()" style="margin-bottom:10px">← Voltar a Pastas</button>
+            <div class="page-title" id="pasta-detail-title">—</div>
+            <div class="page-sub" id="pasta-detail-sub">0 faturas</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="openEditPasta(_currentPastaDetailIdx)">✎ Editar Pasta</button>
+            <button class="btn btn-danger" onclick="delPasta(_currentPastaDetailIdx)">✕ Apagar Pasta</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="table-wrap">
+            <table><thead><tr><th>Tipo</th><th>Estado</th><th>Nº Fatura</th><th>Entidade</th><th>Emissão</th><th>Vencimento</th><th>Total</th><th></th></tr></thead>
+            <tbody id="pasta-detail-body"></tbody></table>
+          </div>
+          <div id="pasta-detail-empty" class="empty" style="display:none"><div class="empty-icon">📂</div><h3>Pasta vazia</h3><p>Ainda não tens faturas associadas a esta pasta.</p></div>
+        </div>
+      </div>
     </div>
 
     <!-- EMPRESA -->
@@ -1119,7 +1142,8 @@ tbody tr:hover {
 <!-- ── Modal: Nova pasta ── -->
 <div class="modal-overlay" id="modal-pasta">
   <div class="modal">
-    <div class="modal-title">Nova Pasta</div>
+    <div class="modal-title" id="modal-pasta-title">Nova Pasta</div>
+    <input type="hidden" id="p-edit-id">
     <div class="form-grid">
       <div class="form-group"><label>Nome</label><input id="p-nome" type="text" placeholder="Ex: EDP, Contabilidade"></div>
       <div class="form-group"><label>Ícone</label>
@@ -1129,7 +1153,7 @@ tbody tr:hover {
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-pasta')">Cancelar</button>
-      <button class="btn btn-primary" onclick="savePasta()">Criar Pasta</button>
+      <button class="btn btn-primary" onclick="savePasta()" id="modal-pasta-save-btn">Criar Pasta</button>
     </div>
   </div>
 </div>
@@ -1224,24 +1248,24 @@ tbody tr:hover {
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
 <!-- App scripts -->
-<script src="sheets.js?v=1782832624"></script>
-<script src="drive.js?v=1782832624"></script>
-<script src="state.js?v=1782832624"></script>
-<script src="ui.js?v=1782832624"></script>
-<script src="invoices.js?v=1782832624"></script>
-<script src="pdf.js?v=1782832624"></script>
-<script src="render.js?v=1782832624"></script>
-<script src="config.js?v=1782832624"></script>
-<script src="nav.js?v=1782832624"></script>
-<script src="app.js?v=1782832624"></script>
-<script src="interactions.js?v=1782832624"></script>
-<script src="animations.js?v=1782832624"></script>
-<script src="drag-drop.js?v=1782832624"></script>
-<script src="spotlight.js?v=1782832624"></script>
-<script src="notifications.js?v=1782832624"></script>
-<script src="validation.js?v=1782832624"></script>
-<script src="parsers.js?v=1782832624"></script>
-<script src="intelligence.js?v=1782832624"></script>
-<script src="reliability.js?v=1782832624"></script>
+<script src="sheets.js?v=1782834076"></script>
+<script src="drive.js?v=1782834076"></script>
+<script src="state.js?v=1782834076"></script>
+<script src="ui.js?v=1782834076"></script>
+<script src="invoices.js?v=1782834076"></script>
+<script src="pdf.js?v=1782834076"></script>
+<script src="render.js?v=1782834076"></script>
+<script src="config.js?v=1782834076"></script>
+<script src="nav.js?v=1782834076"></script>
+<script src="app.js?v=1782834076"></script>
+<script src="interactions.js?v=1782834076"></script>
+<script src="animations.js?v=1782834076"></script>
+<script src="drag-drop.js?v=1782834076"></script>
+<script src="spotlight.js?v=1782834076"></script>
+<script src="notifications.js?v=1782834076"></script>
+<script src="validation.js?v=1782834076"></script>
+<script src="parsers.js?v=1782834076"></script>
+<script src="intelligence.js?v=1782834076"></script>
+<script src="reliability.js?v=1782834076"></script>
 </body>
 </html>

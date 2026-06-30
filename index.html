@@ -733,8 +733,7 @@ tbody tr:hover {
       <div class="nav-item" onclick="nav('pesquisa')"><span class="ic">🔍</span> Pesquisa</div>
       <div class="nav-group">Organização</div>
       <div class="nav-item" onclick="nav('pastas')"><span class="ic">📁</span> Pastas</div>
-      <div class="nav-group">IA</div>
-      <div class="nav-item" onclick="nav('assistente')"><span class="ic">✦</span> Assistente IA</div>
+
     </div>
     <div class="nav-bottom">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 10px 8px">
@@ -918,18 +917,6 @@ tbody tr:hover {
       <div id="pasta-empty" class="empty" style="display:none"><div class="empty-icon">📁</div><h3>Sem pastas criadas</h3><p>Cria categorias como "EDP", "Contabilidade".</p></div>
     </div>
 
-    <!-- ASSISTENTE IA -->
-    <div id="page-assistente" class="page">
-      <div class="page-header"><div><div class="page-title">Assistente IA</div><div class="page-sub">Pergunta sobre faturas, cash flow ou pendentes</div></div></div>
-      <div class="chat-wrap">
-        <div class="chat-msgs" id="chat-msgs"></div>
-        <div class="chat-input-row">
-          <input type="text" id="chat-inp" placeholder="Ex: Quanto tenho pendente este mês?" onkeydown="if(event.key==='Enter')sendChat()">
-          <button class="btn btn-primary" onclick="sendChat()" id="chat-btn">Enviar</button>
-        </div>
-      </div>
-    </div>
-
     <!-- EMPRESA -->
     <div id="page-empresa" class="page">
       <div class="page-header">
@@ -1002,12 +989,6 @@ tbody tr:hover {
     <div id="page-config" class="page">
       <div class="page-header"><div><div class="page-title">Configuração</div><div class="page-sub">API Key e dados</div></div></div>
       <div class="card">
-        <div style="margin-bottom:24px">
-          <div style="font-size:14px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">Anthropic API Key</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Necessária para extração automática de PDFs e Assistente IA. Obtém em <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></p>
-          <div style="display:flex;gap:10px"><input type="password" id="cfg-key" placeholder="sk-ant-…" style="flex:1;max-width:400px"><button class="btn btn-primary" onclick="saveConfig()">Guardar</button></div>
-          <div id="cfg-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
-        </div>
         <div style="margin-bottom:24px">
           <div style="font-size:14px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">Google Sheets</div>
           <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Cola aqui o conteúdo do ficheiro JSON da Service Account para guardar os dados na cloud.</p>
@@ -1243,25 +1224,24 @@ tbody tr:hover {
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
 <!-- App scripts -->
-<script src="sheets.js?v=1782831504"></script>
-<script src="drive.js?v=1782831504"></script>
-<script src="state.js?v=1782831504"></script>
-<script src="ui.js?v=1782831504"></script>
-<script src="invoices.js?v=1782831504"></script>
-<script src="pdf.js?v=1782831504"></script>
-<script src="render.js?v=1782831504"></script>
-<script src="chat.js?v=1782831504"></script>
-<script src="config.js?v=1782831504"></script>
-<script src="nav.js?v=1782831504"></script>
-<script src="app.js?v=1782831504"></script>
-<script src="interactions.js?v=1782831504"></script>
-<script src="animations.js?v=1782831504"></script>
-<script src="drag-drop.js?v=1782831504"></script>
-<script src="spotlight.js?v=1782831504"></script>
-<script src="notifications.js?v=1782831504"></script>
-<script src="validation.js?v=1782831504"></script>
-<script src="parsers.js?v=1782831504"></script>
-<script src="intelligence.js?v=1782831504"></script>
-<script src="reliability.js?v=1782831504"></script>
+<script src="sheets.js?v=1782832624"></script>
+<script src="drive.js?v=1782832624"></script>
+<script src="state.js?v=1782832624"></script>
+<script src="ui.js?v=1782832624"></script>
+<script src="invoices.js?v=1782832624"></script>
+<script src="pdf.js?v=1782832624"></script>
+<script src="render.js?v=1782832624"></script>
+<script src="config.js?v=1782832624"></script>
+<script src="nav.js?v=1782832624"></script>
+<script src="app.js?v=1782832624"></script>
+<script src="interactions.js?v=1782832624"></script>
+<script src="animations.js?v=1782832624"></script>
+<script src="drag-drop.js?v=1782832624"></script>
+<script src="spotlight.js?v=1782832624"></script>
+<script src="notifications.js?v=1782832624"></script>
+<script src="validation.js?v=1782832624"></script>
+<script src="parsers.js?v=1782832624"></script>
+<script src="intelligence.js?v=1782832624"></script>
+<script src="reliability.js?v=1782832624"></script>
 </body>
 </html>

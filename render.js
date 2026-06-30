@@ -27,6 +27,12 @@ function renderDashboard() {
   const forn = invoices.filter(i => !isClient(i));
   const cli  = invoices.filter(i => isClient(i));
 
+  // ── Banner de vencimento ──────────────────────────────────────────────────
+  renderDashBanner();
+
+  // ── Saúde financeira ──────────────────────────────────────────────────────
+  renderHealthScore();
+
   // Métricas fornecedores
   const fornTotal = forn.reduce((s, i) => s + toNum(i.total), 0);
   const fornPago  = forn.filter(isPaid).reduce((s, i) => s + toNum(i.total), 0);
@@ -473,4 +479,95 @@ function renderPesquisa() {
         </div></td>
       </tr>`;
     }).join('');
+}
+
+// ─── Banner de vencimento no dashboard ────────────────────────────────────────
+function renderDashBanner() {
+  const el = document.getElementById('dash-banner');
+  if (!el) return;
+
+  const vencidas = invoices.filter(i => !isPaid(i) && isOverdue(i));
+  const proximas = invoices.filter(i => {
+    if (isPaid(i) || !i.vencimento) return false;
+    const d = daysDiff(i.vencimento);
+    return d !== null && d >= 0 && d <= 7;
+  });
+
+  if (vencidas.length > 0) {
+    const total = vencidas.reduce((s, i) => s + toNum(i.total), 0);
+    el.innerHTML = `<div class="dash-banner error">
+      <span class="dash-banner-icon">⚠️</span>
+      <span class="dash-banner-text"><strong>${vencidas.length} fatura${vencidas.length !== 1 ? 's' : ''} vencida${vencidas.length !== 1 ? 's' : ''}</strong> — ${fmt(total)} por regularizar</span>
+      <span class="dash-banner-link" onclick="nav('alertas')">Ver alertas →</span>
+    </div>`;
+  } else if (proximas.length > 0) {
+    const total = proximas.reduce((s, i) => s + toNum(i.total), 0);
+    el.innerHTML = `<div class="dash-banner warn">
+      <span class="dash-banner-icon">🔔</span>
+      <span class="dash-banner-text"><strong>${proximas.length} fatura${proximas.length !== 1 ? 's' : ''}</strong> vencem nos próximos 7 dias — ${fmt(total)}</span>
+      <span class="dash-banner-link" onclick="nav('alertas')">Ver alertas →</span>
+    </div>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+// ─── Indicador de saúde financeira ────────────────────────────────────────────
+function renderHealthScore() {
+  const el = document.getElementById('health-score-bar');
+  if (!el) return;
+  if (invoices.length === 0) { el.innerHTML = ''; return; }
+
+  const total    = invoices.length;
+  const vencidas = invoices.filter(i => !isPaid(i) && isOverdue(i)).length;
+  const pagas    = invoices.filter(isPaid).length;
+
+  // Score: começa em 100, penaliza vencidas
+  const overdueRatio = vencidas / total;
+  const paidRatio    = pagas    / total;
+  let score = Math.round(100 - (overdueRatio * 60) + (paidRatio * 10));
+  score = Math.max(0, Math.min(100, score));
+
+  let color, dot, label, sub;
+  if (score >= 75) {
+    color = 'var(--green)'; dot = 'var(--green)';
+    label = 'Saúde Financeira Boa';
+    sub   = 'Poucas ou nenhumas faturas em atraso.';
+  } else if (score >= 45) {
+    color = 'var(--amber)'; dot = 'var(--amber)';
+    label = 'Saúde Financeira Moderada';
+    sub   = `${vencidas} fatura${vencidas !== 1 ? 's' : ''} vencida${vencidas !== 1 ? 's' : ''} a regularizar.`;
+  } else {
+    color = 'var(--red)'; dot = 'var(--red)';
+    label = 'Saúde Financeira em Risco';
+    sub   = `${vencidas} fatura${vencidas !== 1 ? 's' : ''} vencida${vencidas !== 1 ? 's' : ''} — atenção imediata.`;
+  }
+
+  el.style.background = color === 'var(--green)' ? 'var(--green-bg)'
+                      : color === 'var(--amber)'  ? 'var(--amber-bg)'
+                      : 'var(--red-bg)';
+  el.style.border = `1px solid ${color === 'var(--green)' ? 'var(--green-border)' : color === 'var(--amber)' ? 'var(--amber-border)' : 'var(--red-border)'}`;
+
+  el.innerHTML = `<div class="health-score-inner">
+    <div class="health-dot" style="background:${dot}"></div>
+    <div style="flex:1">
+      <div class="health-label" style="color:${color}">${label}</div>
+      <div class="health-sub">${sub}</div>
+    </div>
+    <div class="health-pct" style="color:${color}">${score}</div>
+  </div>`;
+}
+
+// ─── Navegar para página com filtro pré-aplicado ──────────────────────────────
+function navFilter(page, estado) {
+  nav(page);
+  setTimeout(() => {
+    const id = page === 'fornecedores' ? 'ff-estado' : 'cf-estado';
+    const el = document.getElementById(id);
+    if (el) {
+      el.value = estado;
+      if (page === 'fornecedores') renderForn();
+      else renderCli();
+    }
+  }, 80);
 }

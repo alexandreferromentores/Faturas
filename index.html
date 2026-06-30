@@ -756,19 +756,20 @@ tbody tr:hover {
       <div class="page-header">
         <div><div class="page-title">Dashboard</div><div class="page-sub">Visão geral financeira</div></div>
       </div>
+      <div id="dash-banner"></div>
       <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">💸 Fornecedores</div>
       <div class="metrics" style="margin-bottom:20px">
-        <div class="metric"><div class="metric-label">Total Faturado</div><div class="metric-value c-blue" id="m-forn-total">0,00 €</div><div class="metric-count" id="m-forn-total-n">0 faturas</div></div>
-        <div class="metric"><div class="metric-label">Pago</div><div class="metric-value c-green" id="m-forn-pago">0,00 €</div><div class="metric-count" id="m-forn-pago-n">0 faturas</div></div>
-        <div class="metric"><div class="metric-label">Pendente</div><div class="metric-value c-amber" id="m-forn-pend">0,00 €</div><div class="metric-count" id="m-forn-pend-n">0 faturas</div></div>
-        <div class="metric"><div class="metric-label">Vencidas</div><div class="metric-value c-red" id="m-forn-venc">0,00 €</div><div class="metric-count" id="m-forn-venc-n">0 faturas</div></div>
+        <div class="metric metric-clickable" onclick="navFilter('fornecedores','')"><div class="metric-label">Total Faturado</div><div class="metric-value c-blue" id="m-forn-total">0,00 €</div><div class="metric-count" id="m-forn-total-n">0 faturas</div></div>
+        <div class="metric metric-clickable" onclick="navFilter('fornecedores','pago')"><div class="metric-label">Pago</div><div class="metric-value c-green" id="m-forn-pago">0,00 €</div><div class="metric-count" id="m-forn-pago-n">0 faturas</div></div>
+        <div class="metric metric-clickable" onclick="navFilter('fornecedores','pendente')"><div class="metric-label">Pendente</div><div class="metric-value c-amber" id="m-forn-pend">0,00 €</div><div class="metric-count" id="m-forn-pend-n">0 faturas</div></div>
+        <div class="metric metric-clickable" onclick="navFilter('fornecedores','vencido')"><div class="metric-label">Vencidas</div><div class="metric-value c-red" id="m-forn-venc">0,00 €</div><div class="metric-count" id="m-forn-venc-n">0 faturas</div></div>
       </div>
       <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">💰 Clientes</div>
       <div class="metrics" style="margin-bottom:24px">
-        <div class="metric"><div class="metric-label">Total Emitido</div><div class="metric-value c-blue" id="m-cli-total">0,00 €</div><div class="metric-count" id="m-cli-total-n">0 faturas</div></div>
-        <div class="metric"><div class="metric-label">Recebido</div><div class="metric-value c-green" id="m-cli-rec">0,00 €</div><div class="metric-count" id="m-cli-rec-n">0 faturas</div></div>
-        <div class="metric"><div class="metric-label">Por Receber</div><div class="metric-value c-amber" id="m-cli-pend">0,00 €</div><div class="metric-count" id="m-cli-pend-n">0 faturas</div></div>
-        <div class="metric"><div class="metric-label">Em Atraso</div><div class="metric-value c-red" id="m-cli-venc">0,00 €</div><div class="metric-count" id="m-cli-venc-n">0 faturas</div></div>
+        <div class="metric metric-clickable" onclick="navFilter('clientes','')"><div class="metric-label">Total Emitido</div><div class="metric-value c-blue" id="m-cli-total">0,00 €</div><div class="metric-count" id="m-cli-total-n">0 faturas</div></div>
+        <div class="metric metric-clickable" onclick="navFilter('clientes','pago')"><div class="metric-label">Recebido</div><div class="metric-value c-green" id="m-cli-rec">0,00 €</div><div class="metric-count" id="m-cli-rec-n">0 faturas</div></div>
+        <div class="metric metric-clickable" onclick="navFilter('clientes','pendente')"><div class="metric-label">Por Receber</div><div class="metric-value c-amber" id="m-cli-pend">0,00 €</div><div class="metric-count" id="m-cli-pend-n">0 faturas</div></div>
+        <div class="metric metric-clickable" onclick="navFilter('clientes','vencido')"><div class="metric-label">Em Atraso</div><div class="metric-value c-red" id="m-cli-venc">0,00 €</div><div class="metric-count" id="m-cli-venc-n">0 faturas</div></div>
       </div>
       <div class="card" style="margin-bottom:20px">
         <div style="font-size:13px;font-weight:600;margin-bottom:14px">💰 Cash Flow Projetado</div>

@@ -773,6 +773,18 @@ tbody tr:hover {
         <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:14px">📊 Últimos 6 Meses</div><canvas id="chart-mensal" height="160"></canvas></div>
         <div class="card"><div style="font-size:13px;font-weight:600;margin-bottom:14px">🗂 Distribuição por Pasta</div><canvas id="chart-pastas" height="160"></canvas><div id="chart-pastas-legend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
       </div>
+      <!-- Previsão de Cash Flow -->
+      <div class="card" style="margin-bottom:20px">
+        <div id="dash-prediction"></div>
+      </div>
+
+      <!-- Categorias de despesa -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px">🏷 Despesas por Categoria</div>
+        <canvas id="chart-categorias" height="140"></canvas>
+        <div id="chart-categorias-legend" style="margin-top:10px"></div>
+      </div>
+
       <!-- Health Score -->
       <div id="health-score-bar" class="health-score" style="margin-bottom:20px"></div>
 
@@ -1039,6 +1051,7 @@ tbody tr:hover {
         <input type="file" id="file-inp" accept=".pdf" style="display:none" multiple onchange="handleFiles(this.files)">
         <div class="loading" id="loading-ext"><div class="spinner"></div> A extrair dados com IA…</div>
         <div id="dup-warn" class="dup-warning" style="display:none">⚠️ Possível duplicado detectado.</div>
+        <div id="anomaly-warning" style="display:none;align-items:flex-start;gap:10px;background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:14px"></div>
         <div id="extracted-box" style="display:none">
           <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:12px">✓ Confirma e corrige se necessário</div>
           <div class="form-grid">
@@ -1230,21 +1243,24 @@ tbody tr:hover {
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
 <!-- App scripts -->
-<script src="sheets.js?v=1782820417"></script>
-<script src="drive.js?v=1782820417"></script>
-<script src="state.js?v=1782820417"></script>
-<script src="ui.js?v=1782820417"></script>
-<script src="invoices.js?v=1782820417"></script>
-<script src="pdf.js?v=1782820417"></script>
-<script src="render.js?v=1782820417"></script>
-<script src="chat.js?v=1782820417"></script>
-<script src="config.js?v=1782820417"></script>
-<script src="nav.js?v=1782820417"></script>
-<script src="app.js?v=1782820417"></script>
-<script src="interactions.js?v=1782820417"></script>
-<script src="animations.js?v=1782820417"></script>
-<script src="drag-drop.js?v=1782820417"></script>
-<script src="spotlight.js?v=1782820417"></script>
-<script src="notifications.js?v=1782820417"></script>
+<script src="sheets.js?v=1782831185"></script>
+<script src="drive.js?v=1782831185"></script>
+<script src="state.js?v=1782831185"></script>
+<script src="ui.js?v=1782831185"></script>
+<script src="invoices.js?v=1782831185"></script>
+<script src="pdf.js?v=1782831185"></script>
+<script src="render.js?v=1782831185"></script>
+<script src="chat.js?v=1782831185"></script>
+<script src="config.js?v=1782831185"></script>
+<script src="nav.js?v=1782831185"></script>
+<script src="app.js?v=1782831185"></script>
+<script src="interactions.js?v=1782831185"></script>
+<script src="animations.js?v=1782831185"></script>
+<script src="drag-drop.js?v=1782831185"></script>
+<script src="spotlight.js?v=1782831185"></script>
+<script src="notifications.js?v=1782831185"></script>
+<script src="validation.js?v=1782831185"></script>
+<script src="parsers.js?v=1782831185"></script>
+<script src="intelligence.js?v=1782831185"></script>
 </body>
 </html>

@@ -78,22 +78,39 @@ function parseReciboVerde(text) {
     vencimento = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
   }
 
-  var nifM    = text.match(/(\d{9}) TRAVESSA/i);
-  var nif     = nifM ? nifM[1] : '';
+  // NIF do prestador: 9 dígitos a seguir à morada, antes da secção do adquirente
+  var nifM = text.match(/NÚMERO DE IDENTIFICAÇÃO FISCAL \(NIF\)\s*-\s*(\d{9})/i) ||
+             text.match(/(\d{9})(?=[^0-9]*DADOS DO ADQUIRENTE)/i) ||
+             text.match(/(\d{9}) TRAVESSA/i);
+  var nif  = nifM ? nifM[1] : '';
 
   var entM    = text.match(/\d{2}\/\d{2}\/\d{4} {2}([A-Z][A-Z &.-]+?) {2,}(?:MENTORES|ASSOCIA)/i);
   var entidade = entM ? entM[1].replace(/ +/g, ' ').trim() : '';
 
-  var descM    = text.match(/TAXA IVA ([\s\S]+?) 1 Unidade/i);
+  var descM    = text.match(/TAXA IVA ([\s\S]+?) (?:1|\d+) Unidade/i);
   var descritivo = descM ? descM[1].replace(/ +/g, ' ').trim() : '';
 
-  var baseM    = text.match(/Valor il[íi]quido +(\d+,\d{2})/i);
-  var ivaM     = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?\bIVA\b +(\d+,\d{2})/i);
-  var retM     = text.match(/TOTAIS DO DOCUMENTO[\s\S]*?Reten[^\n]*?(\d+,\d{2}) /i);
-  var totDocM  = text.match(/[^S]TOTAL DO DOCUMENTO +(\d+,\d{2})/i);
-  var totPagM  = text.match(/TOTAL A PAGAR +(\d+,\d{2})/i);
+  // Aceita números com ponto de milhares opcional: "1.500,00" ou "500,00"
+  var NUM = '(\\d{1,3}(?:\\.\\d{3})*,\\d{2})';
 
-  var fix = function(v) { return v ? v.replace(',', '.') : ''; };
+  var baseM    = text.match(new RegExp('Valor il[íi]quido +' + NUM, 'i'));
+  var ivaM     = text.match(new RegExp('TOTAIS DO DOCUMENTO[\\s\\S]*?\\bIVA\\b +' + NUM, 'i'));
+  var totDocM  = text.match(new RegExp('[^S]TOTAL DO DOCUMENTO +' + NUM, 'i'));
+  var totPagM  = text.match(new RegExp('TOTAL A PAGAR +' + NUM, 'i'));
+
+  // Retenção: só conta se aparecer um valor a seguir a "Retenção na fonte IRS"
+  // dentro da secção de totais, e esse valor for diferente do total do documento
+  // (evita confundir com o IVA quando a retenção está vazia/zero)
+  var retSectionM = text.match(new RegExp('TOTAIS DO DOCUMENTO[\\s\\S]*?Reten[^\\n]*?' + NUM, 'i'));
+  var retM = null;
+  if (retSectionM && totDocM && retSectionM[1] !== totDocM[1] && retSectionM[1] !== (ivaM ? ivaM[1] : null)) {
+    retM = retSectionM;
+  }
+
+  var fix = function(v) {
+    if (!v) return '';
+    return v.replace(/\./g, '').replace(',', '.');
+  };
 
   return {
     numero:     numero,

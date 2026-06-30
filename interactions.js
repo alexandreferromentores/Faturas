@@ -3,7 +3,14 @@
 
 // ─── Clicar na linha da tabela abre o detalhe ────────────────────────────────
 // Patch renderForn e renderCli para tornar as linhas clicáveis
-(function patchTableRows() {
+// Espera o load completo para garantir que as funções originais já existem
+window.addEventListener('load', function patchTableRows() {
+  if (typeof window.renderForn !== 'function' || typeof window.renderCli !== 'function') {
+    // Tenta novamente um pouco depois se ainda não estiverem prontas
+    setTimeout(patchTableRows, 100);
+    return;
+  }
+
   const _origRenderForn = window.renderForn;
   const _origRenderCli  = window.renderCli;
   const _origRenderPesq = window.renderPesquisa;
@@ -12,20 +19,16 @@
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
     tbody.querySelectorAll('tr').forEach(tr => {
-      // Skip if already has listener
       if (tr.dataset.clickable) return;
       tr.dataset.clickable = '1';
       tr.style.cursor = 'pointer';
 
       tr.addEventListener('click', e => {
-        // Don't open detail if clicking a button/icon
         if (e.target.closest('button') || e.target.closest('a')) return;
-        // Find the viewInv index from any icon-btn in the row
         const viewBtn = tr.querySelector('.icon-btn[title="Ver"]');
         if (viewBtn) {
           viewBtn.click();
         } else {
-          // Fallback: find index from onclick of any button
           const btn = tr.querySelector('.icon-btn');
           if (btn) {
             const match = btn.getAttribute('onclick')?.match(/\((\d+)\)/);
@@ -37,20 +40,22 @@
   }
 
   window.renderForn = function() {
-    _origRenderForn?.apply(this, arguments);
+    _origRenderForn.apply(this, arguments);
     setTimeout(() => makeRowsClickable('forn-body'), 50);
   };
 
   window.renderCli = function() {
-    _origRenderCli?.apply(this, arguments);
+    _origRenderCli.apply(this, arguments);
     setTimeout(() => makeRowsClickable('cli-body'), 50);
   };
 
-  window.renderPesquisa = function() {
-    _origRenderPesq?.apply(this, arguments);
-    setTimeout(() => makeRowsClickable('pesq-body'), 50);
-  };
-})();
+  if (_origRenderPesq) {
+    window.renderPesquisa = function() {
+      _origRenderPesq.apply(this, arguments);
+      setTimeout(() => makeRowsClickable('pesq-body'), 50);
+    };
+  }
+});
 
 // ─── Filtro rápido por clique no badge de estado ──────────────────────────────
 // Clica num badge "Vencido" numa linha e filtra a tabela por esse estado
@@ -128,12 +133,18 @@
   };
 
   document.addEventListener('keydown', e => {
-    // Don't trigger if typing in an input
+    // Don't trigger if typing in an input, textarea, select, or contenteditable
     const tag = document.activeElement?.tagName;
-    if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+    const isEditable = document.activeElement?.isContentEditable;
+    if (['INPUT','TEXTAREA','SELECT'].includes(tag) || isEditable) return;
+
+    // Don't trigger if any modal is open — shortcuts are dashboard-only
+    const modalOpen = document.querySelector('.modal-overlay.show, .upload-modal-overlay.show');
+    if (modalOpen && e.key !== 'Escape') return;
+
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-    const action = shortcuts[e.key];
+    const action = shortcuts[e.key.toLowerCase()];
     if (action) {
       e.preventDefault();
       action();

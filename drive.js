@@ -10,6 +10,7 @@ async function uploadToDrive(file, filename) {
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
   formData.append('public_id', 'invoiced-faturas/' + filename.replace('.pdf', ''));
   formData.append('resource_type', 'raw');
+  formData.append('access_mode', 'public');
 
   const resp = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/raw/upload`,

@@ -87,9 +87,9 @@ function parseReciboVerde(text) {
   var entM    = text.match(/\d{2}\/\d{2}\/\d{4} {2}([A-Z][A-Z &.-]+?) {2,}(?:MENTORES|ASSOCIA)/i);
   var entidade = entM ? entM[1].replace(/ +/g, ' ').trim() : '';
 
-  // Descritivo: apanha o texto entre o código de artigo (OUT/SRV/etc.) e a quantidade
-  var descM = text.match(/(?:OUT|SRV|SERV|PRD)\s*[-–]?\s*\w*\s+(?:Serviço|Produto|Bem)?\s*([\w][\s\S]+?)\s+\d+(?:,\d+)?\s*(?:h\/u|Unidade|h\b|un\b)/i) ||
-              text.match(/DESCRIÇÃO[^]*?(?:OUT|SRV|SERV)\s*[-–]?\s*\w*\s+([\w][^\n]{10,200}?)\s+\d+(?:,\d+)?\s*(?:h\/u|Unidade|h\b)/i);
+  // Descritivo: apanha o texto entre o cabeçalho da tabela e a quantidade
+  var descM = text.match(/TOTAL C\/IMPOSTO\s+(?:OUT|SRV|SERV|PRD)\s*[-–]?\s*\w*\s+(?:Serviço|Produto|Bem)?\s*([\w][\s\S]+?)\s+\d+(?:,\d+)?\s*(?:h\/u|Unidade|h\b|un\b)/i) ||
+              text.match(/(?:OUT|SRV|SERV|PRD)\s*[-–]?\s*\w+\s+(?:Serviço|Produto|Bem)\s+([\w][\s\S]+?)\s+\d+(?:,\d+)?\s*(?:h\/u|Unidade|h\b|un\b)/i);
   var descritivo = descM ? descM[1].replace(/ +/g, ' ').trim() : '';
 
   // Aceita números com ponto de milhares opcional: "1.500,00" ou "500,00"

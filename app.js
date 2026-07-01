@@ -129,12 +129,47 @@ function autoMatchPasta(entidade, descritivo) {
   if (!pastas.length) return null;
   const hay = (entidade + ' ' + descritivo).toLowerCase();
   let best = null, bestScore = 0;
+
   for (const p of pastas) {
-    const words = p.nome.toLowerCase().split(/[\s\-_/]+/).filter(w => w.length > 2);
     let score = 0;
-    for (const w of words) { if (hay.includes(w)) score += w.length * 2; }
+    const nomeLower = p.nome.toLowerCase();
+
+    // 1. Correspondência por número de projeto (entre parênteses no nome da pasta)
+    // Ex: "FMC (PESSOAS-FSE+-01027300)" → extrai "PESSOAS-FSE+-01027300" e "01027300"
+    const projMatch = p.nome.match(/\(([^)]+)\)/);
+    if (projMatch) {
+      const projRef = projMatch[1].toLowerCase();
+      // Tenta match exacto do número de projeto
+      if (hay.includes(projRef)) {
+        score += 200; // prioridade máxima
+      } else {
+        // Tenta match só com a parte numérica final
+        const numPart = projRef.replace(/[^0-9]/g, '');
+        if (numPart.length >= 6 && hay.includes(numPart)) {
+          score += 150;
+        }
+      }
+    }
+
+    // 2. Correspondência por palavras do nome da pasta (fora dos parênteses)
+    const nomeBase = p.nome.replace(/\([^)]*\)/g, '').trim().toLowerCase();
+    const words = nomeBase.split(/[\s\-_+/]+/).filter(w => w.length >= 2);
+    for (const w of words) {
+      if (hay.includes(w)) score += w.length * 3;
+    }
+
+    // 3. Match exacto do nome abreviado (ex: "FMC" no descritivo)
+    const abbrevMatch = nomeBase.match(/^([A-Z]{2,6})/i);
+    if (abbrevMatch) {
+      const abbrev = abbrevMatch[1].toLowerCase();
+      // Verifica se a abreviatura aparece como palavra isolada no texto
+      const wordBoundary = new RegExp('\\b' + abbrev + '\\b', 'i');
+      if (wordBoundary.test(hay)) score += abbrev.length * 5;
+    }
+
     if (score > bestScore) { bestScore = score; best = p; }
   }
+
   return bestScore >= 4 ? best : null;
 }
 
@@ -377,36 +412,40 @@ async function handleFiles(files) {
 // ── ONBOARDING ──────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 const OB_STEPS = [
-  { icon: '🏢', title: 'Define a tua empresa',      desc: 'Em "Empresa" no menu, preenche o NIF, nome e email. Aparecem nos relatórios.' },
-  { icon: '📁', title: 'Cria pastas',               desc: 'No separador Pastas, cria categorias como "EDP" ou "Contabilidade".' },
-  { icon: '⬆',  title: 'Carrega faturas',            desc: 'Em Fornecedores ou Clientes usa o botão "Carregar". Aceita múltiplos PDFs.' },
-  { icon: '☁',  title: 'Configura o Google Sheets',  desc: 'Em Configuração, cola o JSON da Service Account para guardar na cloud.' },
-  { icon: '📅', title: 'Controla vencimentos',       desc: 'No Dashboard vês o calendário e o cash flow dos próximos 90 dias.' },
+  { icon: '🏢', title: 'Define a tua empresa',    desc: 'Vai a "Empresa" no menu e preenche o NIF, nome e email. Estes dados aparecem nos relatórios.' },
+  { icon: '📁', title: 'Cria pastas',              desc: 'No separador Pastas, cria categorias como "EDP", "Contabilidade". As faturas são associadas automaticamente.' },
+  { icon: '⬆',  title: 'Carrega faturas',          desc: 'Em Fornecedores ou Clientes, usa o botão "Carregar". Podes carregar múltiplos PDFs de uma vez.' },
+  { icon: '⚙',  title: 'Configura o Google Sheets', desc: 'Em Configuração, cola o JSON da Service Account para guardar os dados na cloud.' },
+  { icon: '✦',  title: 'Usa o Assistente IA',      desc: 'O Assistente responde perguntas sobre cash flow, faturas em atraso, vencimentos e muito mais.' },
 ];
+let obStep = 0;
 
 function startOnboarding() {
   if (localStorage.getItem('fv_ob_done')) return;
-  const list = document.getElementById('ob-steps-list');
-  if (list) {
-    list.innerHTML = OB_STEPS.map(s => `
-      <div class="ob-step-row">
-        <div class="ob-step-icon">${s.icon}</div>
-        <div class="ob-step-text">
-          <div class="ob-step-title">${s.title}</div>
-          <div class="ob-step-desc">${s.desc}</div>
-        </div>
-      </div>`).join('');
-  }
+  obStep = 0;
+  renderObStep();
   document.getElementById('onboarding-overlay').classList.add('show');
+}
+
+function renderObStep() {
+  const s = OB_STEPS[obStep];
+  document.getElementById('ob-icon').textContent  = s.icon;
+  document.getElementById('ob-title').textContent = s.title;
+  document.getElementById('ob-desc').textContent  = s.desc;
+  document.getElementById('ob-btn').textContent   = obStep === OB_STEPS.length - 1 ? 'Começar ✓' : 'Próximo →';
+  document.getElementById('ob-dots').innerHTML    = OB_STEPS.map((_, i) => `<div class="onboarding-dot ${i === obStep ? 'active' : ''}"></div>`).join('');
+}
+
+function nextOnboarding() {
+  obStep++;
+  if (obStep >= OB_STEPS.length) { skipOnboarding(); return; }
+  renderObStep();
 }
 
 function skipOnboarding() {
   localStorage.setItem('fv_ob_done', '1');
   document.getElementById('onboarding-overlay').classList.remove('show');
 }
-
-// nextOnboarding kept for backwards compat
-function nextOnboarding() { skipOnboarding(); }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ── INICIALIZAÇÃO ───────────────────────────────────────────────────────────────

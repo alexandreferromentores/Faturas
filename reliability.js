@@ -171,32 +171,28 @@ window.addEventListener('load', function hookDriveUploadFeedback() {
       estado:     document.getElementById('f-estado').value,
       pastaId:    document.getElementById('f-pasta').value || null,
       notas:      document.getElementById('f-notas').value,
+      faturaUrl:  document.getElementById('f-pdf-link')?.value?.trim() || null,
     };
 
     if (!validateInv(fields)) return;
 
     const inv = buildInv(fields);
 
-    if (window._currentPDFFile && config.sheetsKey) {
-      showDriveUploadStatus('uploading', 'A guardar PDF no Google Drive...');
+    // Upload PDF para Cloudinary se houver ficheiro
+    if (window._currentPDFFile) {
+      showDriveUploadStatus('uploading', 'A guardar PDF no Cloudinary...');
       try {
-        const num = fields.numero.replace(/[^a-zA-Z0-9_-]/g, '_');
-        const ent = (fields.entidade || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
-        const filename = `${num}_${ent}_fatura.pdf`;
-        const result = await uploadToDrive(window._currentPDFFile, filename);
+        const num      = (fields.numero || 'fatura').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const ent      = (fields.entidade || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+        const filename = `${num}_${ent}.pdf`;
+        const result   = await uploadToDrive(window._currentPDFFile, filename);
         inv.faturaUrl = result.url;
-        inv.faturaId = result.id;
-        showDriveUploadStatus('success', 'PDF guardado no Drive com sucesso');
+        inv.faturaId  = result.id;
+        showDriveUploadStatus('success', '✓ PDF guardado no Cloudinary');
       } catch (e) {
-        console.warn('Não foi possível guardar PDF no Drive:', e.message);
-        showDriveUploadStatus('error', 'PDF NÃO foi guardado no Drive — ' + e.message);
-        const proceed = await confirmDialog(
-          `O PDF não pôde ser guardado no Google Drive (${e.message}).<br><br>A fatura vai ser guardada apenas com os dados extraídos, sem o ficheiro original. Continuar?`
-        );
-        if (!proceed) { clearDriveUploadStatus(); return; }
+        console.warn('Cloudinary upload falhou:', e.message);
+        showDriveUploadStatus('error', 'PDF não guardado — ' + e.message);
       }
-    } else if (window._currentPDFFile && !config.sheetsKey) {
-      showDriveUploadStatus('skipped', 'Google Sheets não configurado — PDF não foi guardado');
     }
 
     invoices.push(inv);
@@ -208,7 +204,7 @@ window.addEventListener('load', function hookDriveUploadFeedback() {
       clearDriveUploadStatus();
       closeModal('modal-upload');
       nav(tipo === 'cliente' ? 'clientes' : 'fornecedores');
-    }, inv.faturaUrl || !window._currentPDFFile ? 200 : 1200);
+    }, 300);
   };
 });
 

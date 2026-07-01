@@ -87,7 +87,9 @@ function parseReciboVerde(text) {
   var entM    = text.match(/\d{2}\/\d{2}\/\d{4} {2}([A-Z][A-Z &.-]+?) {2,}(?:MENTORES|ASSOCIA)/i);
   var entidade = entM ? entM[1].replace(/ +/g, ' ').trim() : '';
 
-  var descM    = text.match(/TAXA IVA ([\s\S]+?) (?:1|\d+) Unidade/i);
+  // Descritivo: apanha o texto entre o código de artigo (OUT/SRV/etc.) e a quantidade
+  var descM = text.match(/(?:OUT|SRV|SERV|PRD)\s*[-–]?\s*\w*\s+(?:Serviço|Produto|Bem)?\s*([\w][\s\S]+?)\s+\d+(?:,\d+)?\s*(?:h\/u|Unidade|h\b|un\b)/i) ||
+              text.match(/DESCRIÇÃO[^]*?(?:OUT|SRV|SERV)\s*[-–]?\s*\w*\s+([\w][^\n]{10,200}?)\s+\d+(?:,\d+)?\s*(?:h\/u|Unidade|h\b)/i);
   var descritivo = descM ? descM[1].replace(/ +/g, ' ').trim() : '';
 
   // Aceita números com ponto de milhares opcional: "1.500,00" ou "500,00"
@@ -98,14 +100,9 @@ function parseReciboVerde(text) {
   var totDocM  = text.match(new RegExp('[^S]TOTAL DO DOCUMENTO +' + NUM, 'i'));
   var totPagM  = text.match(new RegExp('TOTAL A PAGAR +' + NUM, 'i'));
 
-  // Retenção: só conta se aparecer um valor a seguir a "Retenção na fonte IRS"
-  // dentro da secção de totais, e esse valor for diferente do total do documento
-  // (evita confundir com o IVA quando a retenção está vazia/zero)
-  var retSectionM = text.match(new RegExp('TOTAIS DO DOCUMENTO[\\s\\S]*?Reten[^\\n]*?' + NUM, 'i'));
-  var retM = null;
-  if (retSectionM && totDocM && retSectionM[1] !== totDocM[1] && retSectionM[1] !== (ivaM ? ivaM[1] : null)) {
-    retM = retSectionM;
-  }
+  // Retenção: procura directamente pelo texto "Retenção na fonte IRS" seguido de valor
+  var retM = text.match(new RegExp('Reten[çc][ãa]o na fonte IRS\\s+' + NUM, 'i')) ||
+             text.match(new RegExp('Reten[çc][ãa]o\\s+' + NUM, 'i'));
 
   var fix = function(v) {
     if (!v) return '';
